@@ -1,32 +1,13 @@
 "use client";
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback } from "react";
 
-// ── Types ──────────────────────────────────────────────────────────────────
 type Theme = "light" | "dark";
 type View = "landing" | "app";
 type StickyColor = "#FAEEDA" | "#E1F5EE" | "#EEEDFE" | "#FCE8E8" | "#E8F0FC";
 
-interface Bord {
-  id: string;
-  name: string;
-  color: string;
-  createdAt: Date;
-}
-
-interface StickyNote {
-  id: string;
-  x: number;
-  y: number;
-  text: string;
-  color: StickyColor;
-  emoji: string;
-}
-
-interface CheckItem {
-  id: string;
-  text: string;
-  done: boolean;
-}
+interface Bord { id: string; name: string; color: string; createdAt: Date; }
+interface StickyNote { id: string; x: number; y: number; text: string; color: StickyColor; emoji: string; }
+interface CheckItem { id: string; text: string; done: boolean; }
 
 const TEMPLATES = [
   { id: "meeting", name: "Team Meeting", icon: "👥", color: "#1D9E75", description: "Agenda, action items, decisions" },
@@ -38,142 +19,54 @@ const TEMPLATES = [
 
 const BORD_COLORS = ["#1D9E75","#7F77DD","#EF9F27","#D85A30","#378ADD","#E05C94","#2BBCD4","#8BC34A"];
 
-const DEFAULT_BORDS: Bord[] = [
-  { id: "1", name: "Q3 Planning Session", color: "#1D9E75", createdAt: new Date() },
-  { id: "2", name: "Product Roadmap", color: "#7F77DD", createdAt: new Date() },
-  { id: "3", name: "UX Research Notes", color: "#EF9F27", createdAt: new Date() },
-  { id: "4", name: "Onboarding Flow", color: "#D85A30", createdAt: new Date() },
-  { id: "5", name: "Weekly Standup", color: "#378ADD", createdAt: new Date() },
-];
-
-const DEFAULT_STICKIES: StickyNote[] = [
-  { id: "s1", x: 60, y: 80, text: "Migrate auth to OAuth 2.0 before launch", color: "#FAEEDA", emoji: "💡" },
-  { id: "s2", x: 260, y: 80, text: "Ship mobile beta by Aug 15", color: "#E1F5EE", emoji: "🚩" },
-  { id: "s3", x: 460, y: 80, text: "Freemium tier at launch or gate behind Pro?", color: "#EEEDFE", emoji: "❓" },
-];
-
-const DEFAULT_CHECKS: CheckItem[] = [
-  { id: "c1", text: "Finalise pricing page", done: true },
-  { id: "c2", text: "Confirm CDN config", done: true },
-  { id: "c3", text: "Load test (10k users)", done: false },
-  { id: "c4", text: "Legal review of ToS", done: false },
-  { id: "c5", text: "Schedule launch comms", done: false },
-];
-
-// ── Landing Page ───────────────────────────────────────────────────────────
 function LandingPage({ onEnter, theme }: { onEnter: () => void; theme: Theme }) {
   const dark = theme === "dark";
   return (
-    <div style={{
-      minHeight: "100vh",
-      background: dark ? "#0F0F0F" : "#ffffff",
-      color: dark ? "#f0f0f0" : "#1a1a1a",
-      fontFamily: "'Georgia', serif",
-      display: "flex",
-      flexDirection: "column",
-    }}>
-      {/* Nav */}
+    <div style={{ minHeight: "100vh", background: dark ? "#0F0F0F" : "#ffffff", color: dark ? "#f0f0f0" : "#1a1a1a", fontFamily: "'Georgia', serif", display: "flex", flexDirection: "column" }}>
       <nav style={{ display: "flex", alignItems: "center", padding: "20px 40px", borderBottom: `1px solid ${dark ? "#222" : "#f0f0f0"}` }}>
-        <span style={{ fontSize: 20, fontWeight: 600, letterSpacing: -0.5 }}>
-          White<span style={{ color: "#1D9E75" }}>bord</span>
-        </span>
+        <span style={{ fontSize: 20, fontWeight: 600, letterSpacing: -0.5 }}>White<span style={{ color: "#1D9E75" }}>bord</span></span>
         <div style={{ flex: 1 }} />
-        <button onClick={onEnter} style={{
-          padding: "8px 20px", background: "#1D9E75", color: "#fff",
-          border: "none", borderRadius: 8, fontSize: 13, cursor: "pointer", fontFamily: "inherit"
-        }}>
-          Open App →
-        </button>
+        <button onClick={onEnter} style={{ padding: "8px 20px", background: "#1D9E75", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>Open App →</button>
       </nav>
-
-      {/* Hero */}
       <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "80px 40px", textAlign: "center" }}>
-        <div style={{
-          display: "inline-block", padding: "4px 14px", borderRadius: 20,
-          background: "#E1F5EE", color: "#0F6E56", fontSize: 12, fontWeight: 500,
-          marginBottom: 24, fontFamily: "sans-serif"
-        }}>
-          ✦ Now in beta
-        </div>
+        <div style={{ display: "inline-block", padding: "4px 14px", borderRadius: 20, background: "#E1F5EE", color: "#0F6E56", fontSize: 12, fontWeight: 500, marginBottom: 24, fontFamily: "sans-serif" }}>✦ Now in beta</div>
         <h1 style={{ fontSize: "clamp(40px, 7vw, 80px)", fontWeight: 700, lineHeight: 1.1, marginBottom: 24, letterSpacing: -2 }}>
-          Meeting notes that<br />
-          <span style={{ color: "#1D9E75" }}>actually make sense.</span>
+          Meeting notes that<br /><span style={{ color: "#1D9E75" }}>actually make sense.</span>
         </h1>
         <p style={{ fontSize: 18, color: dark ? "#888" : "#666", maxWidth: 500, lineHeight: 1.7, marginBottom: 40, fontFamily: "sans-serif", fontWeight: 300 }}>
           Whitebord is a visual, collaborative workspace for meetings, brainstorming, and planning. Fast, minimal, and built around how you actually think.
         </p>
         <div style={{ display: "flex", gap: 12 }}>
-          <button onClick={onEnter} style={{
-            padding: "14px 32px", background: "#1D9E75", color: "#fff",
-            border: "none", borderRadius: 10, fontSize: 15, cursor: "pointer",
-            fontFamily: "sans-serif", fontWeight: 500
-          }}>
-            Get started free
-          </button>
-          <button style={{
-            padding: "14px 32px", background: "transparent",
-            border: `1px solid ${dark ? "#333" : "#e0e0e0"}`, borderRadius: 10,
-            fontSize: 15, cursor: "pointer", color: dark ? "#aaa" : "#555",
-            fontFamily: "sans-serif"
-          }}>
-            Watch demo
-          </button>
+          <button onClick={onEnter} style={{ padding: "14px 32px", background: "#1D9E75", color: "#fff", border: "none", borderRadius: 10, fontSize: 15, cursor: "pointer", fontFamily: "sans-serif", fontWeight: 500 }}>Get started free</button>
+          <button style={{ padding: "14px 32px", background: "transparent", border: `1px solid ${dark ? "#333" : "#e0e0e0"}`, borderRadius: 10, fontSize: 15, cursor: "pointer", color: dark ? "#aaa" : "#555", fontFamily: "sans-serif" }}>Watch demo</button>
         </div>
-
-        {/* Feature pills */}
         <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 60, justifyContent: "center" }}>
           {["∞ Infinite canvas","Real-time collab","AI summaries","Templates","Offline support","PDF export"].map(f => (
-            <span key={f} style={{
-              padding: "6px 14px", borderRadius: 20, fontSize: 12,
-              background: dark ? "#1a1a1a" : "#f5f5f5",
-              border: `1px solid ${dark ? "#2a2a2a" : "#e8e8e8"}`,
-              color: dark ? "#aaa" : "#555", fontFamily: "sans-serif"
-            }}>{f}</span>
+            <span key={f} style={{ padding: "6px 14px", borderRadius: 20, fontSize: 12, background: dark ? "#1a1a1a" : "#f5f5f5", border: `1px solid ${dark ? "#2a2a2a" : "#e8e8e8"}`, color: dark ? "#aaa" : "#555", fontFamily: "sans-serif" }}>{f}</span>
           ))}
         </div>
-
-        {/* Preview card */}
-        <div style={{
-          marginTop: 60, width: "100%", maxWidth: 700, borderRadius: 16,
-          border: `1px solid ${dark ? "#222" : "#e8e8e8"}`,
-          background: dark ? "#141414" : "#fafafa",
-          padding: 24, display: "flex", gap: 12, flexWrap: "wrap"
-        }}>
-          {[
-            { color: "#FAEEDA", text: "OAuth migration", emoji: "💡" },
-            { color: "#E1F5EE", text: "Mobile beta Aug 15", emoji: "🚩" },
-            { color: "#EEEDFE", text: "Pricing decision", emoji: "❓" },
-            { color: "#FCE8E8", text: "Load test needed", emoji: "⚠️" },
-          ].map((s, i) => (
-            <div key={i} style={{
-              background: s.color, borderRadius: 10, padding: "12px 14px",
-              fontSize: 12, color: "#333", flex: "1 1 140px", minWidth: 120
-            }}>
-              <div style={{ fontSize: 16, marginBottom: 6 }}>{s.emoji}</div>
-              {s.text}
+        <div style={{ marginTop: 60, width: "100%", maxWidth: 700, borderRadius: 16, border: `1px solid ${dark ? "#222" : "#e8e8e8"}`, background: dark ? "#141414" : "#fafafa", padding: 24, display: "flex", gap: 12, flexWrap: "wrap" }}>
+          {[{ color: "#FAEEDA", text: "OAuth migration", emoji: "💡" }, { color: "#E1F5EE", text: "Mobile beta Aug 15", emoji: "🚩" }, { color: "#EEEDFE", text: "Pricing decision", emoji: "❓" }, { color: "#FCE8E8", text: "Load test needed", emoji: "⚠️" }].map((s, i) => (
+            <div key={i} style={{ background: s.color, borderRadius: 10, padding: "12px 14px", fontSize: 12, color: "#333", flex: "1 1 140px", minWidth: 120 }}>
+              <div style={{ fontSize: 16, marginBottom: 6 }}>{s.emoji}</div>{s.text}
             </div>
           ))}
         </div>
       </div>
-
-      {/* Footer */}
       <footer style={{ padding: "20px 40px", borderTop: `1px solid ${dark ? "#1a1a1a" : "#f0f0f0"}`, display: "flex", justifyContent: "space-between", fontSize: 12, color: dark ? "#555" : "#aaa", fontFamily: "sans-serif" }}>
-        <span>© 2025 Whitebord</span>
-        <span>Privacy · Terms</span>
+        <span>© 2025 Whitebord</span><span>Privacy · Terms</span>
       </footer>
     </div>
   );
 }
 
-// ── Main App ───────────────────────────────────────────────────────────────
 export default function App() {
   const [view, setView] = useState<View>("landing");
   const [theme, setTheme] = useState<Theme>("light");
-  const [bords, setBords] = useState<Bord[]>(DEFAULT_BORDS);
-  const [activeBordId, setActiveBordId] = useState("1");
-  const [stickies, setStickies] = useState<StickyNote[]>(DEFAULT_STICKIES);
-  const [checks, setChecks] = useState<CheckItem[]>(DEFAULT_CHECKS);
-  const [showAddBord, setShowAddBord] = useState(false);
+  const [bords, setBords] = useState<Bord[]>([]);
+  const [activeBordId, setActiveBordId] = useState("");
+  const [stickies, setStickies] = useState<StickyNote[]>([]);
+  const [checks, setChecks] = useState<CheckItem[]>([]);
   const [showTemplates, setShowTemplates] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [newBordName, setNewBordName] = useState("");
@@ -198,7 +91,6 @@ export default function App() {
   const activeBord = bords.find(b => b.id === activeBordId);
   const filteredBords = bords.filter(b => b.name.toLowerCase().includes(search.toLowerCase()));
 
-  // Drag stickies
   const onMouseDown = useCallback((e: React.MouseEvent, id: string) => {
     const sticky = stickies.find(s => s.id === id);
     if (!sticky) return;
@@ -209,88 +101,71 @@ export default function App() {
 
   const onMouseMove = useCallback((e: React.MouseEvent) => {
     if (!dragging) return;
-    setStickies(prev => prev.map(s => s.id === dragging
-      ? { ...s, x: e.clientX - dragOffset.x, y: e.clientY - dragOffset.y }
-      : s
-    ));
+    setStickies(prev => prev.map(s => s.id === dragging ? { ...s, x: e.clientX - dragOffset.x, y: e.clientY - dragOffset.y } : s));
   }, [dragging, dragOffset]);
 
   const onMouseUp = useCallback(() => setDragging(null), []);
 
-  // Add bord
   const handleAddBord = (templateId?: string) => {
     const template = TEMPLATES.find(t => t.id === templateId);
     const name = newBordName.trim() || template?.name || "New Bord";
     const id = Date.now().toString();
-    const newBord: Bord = { id, name, color: template?.color || newBordColor, createdAt: new Date() };
-    setBords(prev => [newBord, ...prev]);
+    setBords(prev => [{ id, name, color: template?.color || newBordColor, createdAt: new Date() }, ...prev]);
     setActiveBordId(id);
+    setStickies([]);
+    setChecks([]);
     setNewBordName("");
-    setShowAddBord(false);
     setShowTemplates(false);
   };
 
-  // Add sticky
   const handleAddSticky = () => {
     if (!newStickyText.trim()) return;
     const colors: StickyColor[] = ["#FAEEDA", "#E1F5EE", "#EEEDFE", "#FCE8E8", "#E8F0FC"];
     const emojis = ["💡", "🚩", "❓", "⚠️", "📌"];
     const idx = stickies.length % colors.length;
-    setStickies(prev => [...prev, {
-      id: Date.now().toString(),
-      x: 60 + (stickies.length % 4) * 200,
-      y: 80 + Math.floor(stickies.length / 4) * 180,
-      text: newStickyText,
-      color: colors[idx],
-      emoji: emojis[idx],
-    }]);
+    setStickies(prev => [...prev, { id: Date.now().toString(), x: 60 + (stickies.length % 4) * 200, y: 80 + Math.floor(stickies.length / 4) * 180, text: newStickyText, color: colors[idx], emoji: emojis[idx] }]);
     setNewStickyText("");
   };
 
   if (view === "landing") return <LandingPage onEnter={() => setView("app")} theme={theme} />;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100vh", background: bg, color: text, fontFamily: "sans-serif" }}
-      onMouseMove={onMouseMove} onMouseUp={onMouseUp}>
-
-      {/* Top bar */}
+    <div style={{ display: "flex", flexDirection: "column", height: "100vh", background: bg, color: text, fontFamily: "sans-serif" }} onMouseMove={onMouseMove} onMouseUp={onMouseUp}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "0 16px", height: 48, borderBottom: `1px solid ${border}`, background: bg, flexShrink: 0 }}>
         <button onClick={() => setView("landing")} style={{ fontSize: 15, fontWeight: 600, letterSpacing: -0.3, background: "none", border: "none", cursor: "pointer", color: text, fontFamily: "Georgia, serif" }}>
           White<span style={{ color: "#1D9E75" }}>bord</span>
         </button>
         <div style={{ flex: 1 }} />
         <span style={{ fontSize: 11, color: text3 }}>Auto-saved</span>
-        <button style={{ display: "flex", alignItems: "center", gap: 4, padding: "5px 10px", border: `1px solid ${border}`, borderRadius: 8, fontSize: 12, color: text2, cursor: "pointer", background: "transparent" }}>Share</button>
-        <button style={{ display: "flex", alignItems: "center", gap: 4, padding: "5px 10px", border: `1px solid ${border}`, borderRadius: 8, fontSize: 12, color: text2, cursor: "pointer", background: "transparent" }}>Export</button>
+        <button style={{ padding: "5px 10px", border: `1px solid ${border}`, borderRadius: 8, fontSize: 12, color: text2, cursor: "pointer", background: "transparent" }}>Share</button>
+        <button style={{ padding: "5px 10px", border: `1px solid ${border}`, borderRadius: 8, fontSize: 12, color: text2, cursor: "pointer", background: "transparent" }}>Export</button>
         <button onClick={() => setShowTemplates(true)} style={{ padding: "5px 12px", background: "#1D9E75", color: "#fff", border: "none", borderRadius: 8, fontSize: 12, cursor: "pointer" }}>+ Add Bord</button>
       </div>
 
       <div style={{ display: "flex", flex: 1, minHeight: 0 }}>
-        {/* Sidebar */}
         <div style={{ width: 220, borderRight: `1px solid ${border}`, display: "flex", flexDirection: "column", background: bg, flexShrink: 0 }}>
           <div style={{ padding: 12, borderBottom: `1px solid ${border}` }}>
             <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 10px", border: `1px solid ${border}`, borderRadius: 8, background: bg2 }}>
               <span style={{ fontSize: 12, color: text3 }}>🔍</span>
-              <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search bords..."
-                style={{ border: "none", outline: "none", background: "transparent", fontSize: 12, color: text, width: "100%" }} />
+              <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search bords..." style={{ border: "none", outline: "none", background: "transparent", fontSize: 12, color: text, width: "100%" }} />
             </div>
           </div>
-
           <div style={{ flex: 1, overflowY: "auto" }}>
             <p style={{ padding: "10px 12px 4px", fontSize: 10, fontWeight: 500, letterSpacing: "0.6px", color: text3, textTransform: "uppercase" }}>Bords</p>
+            {filteredBords.length === 0 && (
+              <div style={{ padding: "20px 12px", textAlign: "center" }}>
+                <p style={{ fontSize: 12, color: text3, marginBottom: 8 }}>No bords yet</p>
+                <button onClick={() => setShowTemplates(true)} style={{ fontSize: 12, color: "#1D9E75", background: "none", border: "none", cursor: "pointer" }}>+ Create your first bord</button>
+              </div>
+            )}
             {filteredBords.map(b => (
-              <div key={b.id} onClick={() => setActiveBordId(b.id)}
-                style={{ height: 36, display: "flex", alignItems: "center", padding: "0 12px", fontSize: 13, cursor: "pointer", background: b.color, color: "#fff", fontWeight: b.id === activeBordId ? 600 : 400, opacity: b.id === activeBordId ? 1 : 0.85 }}>
+              <div key={b.id} onClick={() => setActiveBordId(b.id)} style={{ height: 36, display: "flex", alignItems: "center", padding: "0 12px", fontSize: 13, cursor: "pointer", background: b.color, color: "#fff", fontWeight: b.id === activeBordId ? 600 : 400, opacity: b.id === activeBordId ? 1 : 0.85 }}>
                 {b.name}
               </div>
             ))}
-            {filteredBords.length === 0 && <p style={{ padding: "12px", fontSize: 12, color: text3 }}>No bords found</p>}
           </div>
-
           <div style={{ padding: "8px 12px" }}>
-            <button onClick={() => setShowTemplates(true)} style={{ width: "100%", padding: "7px 10px", border: `1px dashed ${border}`, borderRadius: 8, fontSize: 12, color: text3, cursor: "pointer", background: "transparent", transition: "all 0.15s" }}>
-              + Add Bord
-            </button>
+            <button onClick={() => setShowTemplates(true)} style={{ width: "100%", padding: "7px 10px", border: `1px dashed ${border}`, borderRadius: 8, fontSize: 12, color: text3, cursor: "pointer", background: "transparent" }}>+ Add Bord</button>
           </div>
           <div style={{ padding: "10px 12px", borderTop: `1px solid ${border}`, display: "flex", alignItems: "center", gap: 8 }}>
             <button onClick={() => setShowSettings(true)} style={{ fontSize: 12, color: text3, background: "none", border: "none", cursor: "pointer" }}>⚙ Settings</button>
@@ -299,20 +174,24 @@ export default function App() {
           </div>
         </div>
 
-        {/* Canvas */}
         <div ref={canvasRef} style={{ flex: 1, position: "relative", overflow: "hidden", background: bg3, backgroundImage: `radial-gradient(circle, ${dark ? "#2a2a2a" : "#d1d5db"} 1px, transparent 1px)`, backgroundSize: "20px 20px" }}>
-          {/* Canvas title */}
-          <div style={{ position: "absolute", top: 14, left: 16, display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{ position: "absolute", top: 14, left: 16 }}>
             <span style={{ fontSize: 13, fontWeight: 500, color: text2, background: bg, border: `1px solid ${border}`, borderRadius: 8, padding: "4px 10px" }}>
-              {activeBord?.name || "Select a bord"}
+              {activeBord ? activeBord.name : "Select or create a bord →"}
             </span>
           </div>
 
-          {/* Stickies */}
-          {stickies.map(s => (
-            <div key={s.id}
-              onMouseDown={e => onMouseDown(e, s.id)}
-              onDoubleClick={() => setEditingSticky(s.id)}
+          {!activeBordId && (
+            <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16 }}>
+              <p style={{ fontSize: 32 }}>🗒️</p>
+              <p style={{ fontSize: 15, color: text2, fontWeight: 500 }}>No bord selected</p>
+              <p style={{ fontSize: 13, color: text3 }}>Create a bord to get started</p>
+              <button onClick={() => setShowTemplates(true)} style={{ padding: "10px 24px", background: "#1D9E75", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, cursor: "pointer" }}>+ Create Bord</button>
+            </div>
+          )}
+
+          {activeBordId && stickies.map(s => (
+            <div key={s.id} onMouseDown={e => onMouseDown(e, s.id)} onDoubleClick={() => setEditingSticky(s.id)}
               style={{ position: "absolute", left: s.x, top: s.y, width: 160, padding: 12, borderRadius: 10, background: s.color, color: "#333", fontSize: 12, lineHeight: 1.5, cursor: dragging === s.id ? "grabbing" : "grab", userSelect: "none", boxShadow: "0 2px 8px rgba(0,0,0,0.08)", zIndex: dragging === s.id ? 100 : 1 }}>
               <div style={{ fontSize: 10, fontWeight: 500, marginBottom: 6, opacity: 0.7 }}>{s.emoji}</div>
               {editingSticky === s.id ? (
@@ -323,30 +202,16 @@ export default function App() {
             </div>
           ))}
 
-          {/* Checklist card */}
-          <div style={{ position: "absolute", top: 260, left: 60, width: 220, background: bg, border: `1px solid ${border}`, borderRadius: 12, padding: 16, boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
-            <p style={{ fontSize: 13, fontWeight: 500, marginBottom: 10, color: text }}>✅ Launch Checklist</p>
-            {checks.map(c => (
-              <div key={c.id} onClick={() => setChecks(prev => prev.map(i => i.id === c.id ? { ...i, done: !i.done } : i))}
-                style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 0", cursor: "pointer" }}>
-                <div style={{ width: 14, height: 14, borderRadius: "50%", border: `1.5px solid ${c.done ? "#1D9E75" : border}`, background: c.done ? "#1D9E75" : "transparent", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  {c.done && <span style={{ color: "#fff", fontSize: 8 }}>✓</span>}
-                </div>
-                <span style={{ fontSize: 12, color: c.done ? text3 : text2, textDecoration: c.done ? "line-through" : "none" }}>{c.text}</span>
-              </div>
-            ))}
-          </div>
+          {activeBordId && (
+            <div style={{ position: "absolute", bottom: 52, left: "50%", transform: "translateX(-50%)", display: "flex", gap: 8, background: bg, border: `1px solid ${border}`, borderRadius: 24, padding: "6px 10px", boxShadow: "0 2px 12px rgba(0,0,0,0.08)" }}>
+              <input value={newStickyText} onChange={e => setNewStickyText(e.target.value)}
+                onKeyDown={e => e.key === "Enter" && handleAddSticky()}
+                placeholder="Add a sticky note and press Enter..."
+                style={{ border: "none", outline: "none", background: "transparent", fontSize: 12, color: text, width: 260 }} />
+              <button onClick={handleAddSticky} style={{ padding: "4px 12px", background: "#1D9E75", color: "#fff", border: "none", borderRadius: 16, fontSize: 12, cursor: "pointer" }}>Add</button>
+            </div>
+          )}
 
-          {/* Add sticky input */}
-          <div style={{ position: "absolute", bottom: 52, left: "50%", transform: "translateX(-50%)", display: "flex", gap: 8, background: bg, border: `1px solid ${border}`, borderRadius: 24, padding: "6px 10px", boxShadow: "0 2px 12px rgba(0,0,0,0.08)" }}>
-            <input value={newStickyText} onChange={e => setNewStickyText(e.target.value)}
-              onKeyDown={e => e.key === "Enter" && handleAddSticky()}
-              placeholder="Add a sticky note..."
-              style={{ border: "none", outline: "none", background: "transparent", fontSize: 12, color: text, width: 200 }} />
-            <button onClick={handleAddSticky} style={{ padding: "4px 12px", background: "#1D9E75", color: "#fff", border: "none", borderRadius: 16, fontSize: 12, cursor: "pointer" }}>Add</button>
-          </div>
-
-          {/* Zoom */}
           <div style={{ position: "absolute", bottom: 14, right: 16, display: "flex", alignItems: "center", gap: 6, background: bg, border: `1px solid ${border}`, borderRadius: 8, padding: "4px 10px", fontSize: 11, color: text2 }}>
             <button onClick={() => setZoom(z => Math.max(50, z - 10))} style={{ background: "none", border: "none", cursor: "pointer", color: text2, fontSize: 14 }}>−</button>
             <span>{zoom}%</span>
@@ -355,7 +220,6 @@ export default function App() {
         </div>
       </div>
 
-      {/* Templates modal */}
       {showTemplates && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200 }}>
           <div style={{ background: bg, borderRadius: 16, padding: 28, width: 480, border: `1px solid ${border}` }}>
@@ -363,8 +227,7 @@ export default function App() {
               <h2 style={{ fontSize: 16, fontWeight: 600, color: text }}>New Bord</h2>
               <button onClick={() => setShowTemplates(false)} style={{ background: "none", border: "none", cursor: "pointer", color: text2, fontSize: 18 }}>×</button>
             </div>
-            <input value={newBordName} onChange={e => setNewBordName(e.target.value)}
-              placeholder="Bord name..."
+            <input value={newBordName} onChange={e => setNewBordName(e.target.value)} placeholder="Bord name..."
               style={{ width: "100%", padding: "10px 14px", border: `1px solid ${border}`, borderRadius: 8, fontSize: 13, background: bg2, color: text, outline: "none", marginBottom: 16, boxSizing: "border-box" }} />
             <p style={{ fontSize: 11, color: text3, marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.5px", fontWeight: 500 }}>Choose a template</p>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 16 }}>
@@ -380,21 +243,17 @@ export default function App() {
               ))}
             </div>
             <div style={{ display: "flex", gap: 8 }}>
-              <div style={{ display: "flex", gap: 6, flex: 1 }}>
+              <div style={{ display: "flex", gap: 6, flex: 1, alignItems: "center" }}>
                 {BORD_COLORS.map(c => (
-                  <div key={c} onClick={() => setNewBordColor(c)}
-                    style={{ width: 20, height: 20, borderRadius: "50%", background: c, cursor: "pointer", border: newBordColor === c ? "2px solid #1a1a1a" : "2px solid transparent" }} />
+                  <div key={c} onClick={() => setNewBordColor(c)} style={{ width: 20, height: 20, borderRadius: "50%", background: c, cursor: "pointer", border: newBordColor === c ? "2px solid #1a1a1a" : "2px solid transparent" }} />
                 ))}
               </div>
-              <button onClick={() => handleAddBord()} style={{ padding: "8px 20px", background: "#1D9E75", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, cursor: "pointer" }}>
-                Create
-              </button>
+              <button onClick={() => handleAddBord()} style={{ padding: "8px 20px", background: "#1D9E75", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, cursor: "pointer" }}>Create</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Settings panel */}
       {showSettings && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200 }}>
           <div style={{ background: bg, borderRadius: 16, padding: 28, width: 360, border: `1px solid ${border}` }}>
