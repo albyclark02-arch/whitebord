@@ -24,7 +24,7 @@ function LandingPage({ onEnter, theme }: { onEnter: () => void; theme: Theme }) 
   return (
     <div style={{ minHeight: "100vh", background: dark ? "#0F0F0F" : "#ffffff", color: dark ? "#f0f0f0" : "#1a1a1a", fontFamily: "'Georgia', serif", display: "flex", flexDirection: "column" }}>
       <nav style={{ display: "flex", alignItems: "center", padding: "20px 40px", borderBottom: `1px solid ${dark ? "#222" : "#f0f0f0"}` }}>
-        <span style={{ fontSize: 20, fontWeight: 600, letterSpacing: -0.5 }}>White<span style={{ color: "#1D9E75" }}>bord</span></span>
+        <span style={{ fontSize: 20, fontWeight: 600, letterSpacing: -0.5 }}>Work<span style={{ color: "#1D9E75" }}>board</span></span>
         <div style={{ flex: 1 }} />
         <button onClick={onEnter} style={{ padding: "8px 20px", background: "#1D9E75", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>Open App →</button>
       </nav>
@@ -133,7 +133,7 @@ export default function App() {
     <div style={{ display: "flex", flexDirection: "column", height: "100vh", background: bg, color: text, fontFamily: "sans-serif" }} onMouseMove={onMouseMove} onMouseUp={onMouseUp}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "0 16px", height: 48, borderBottom: `1px solid ${border}`, background: bg, flexShrink: 0 }}>
         <button onClick={() => setView("landing")} style={{ fontSize: 15, fontWeight: 600, letterSpacing: -0.3, background: "none", border: "none", cursor: "pointer", color: text, fontFamily: "Georgia, serif" }}>
-          White<span style={{ color: "#1D9E75" }}>bord</span>
+          Work<span style={{ color: "#1D9E75" }}>board</span>
         </button>
         <div style={{ flex: 1 }} />
         <span style={{ fontSize: 11, color: text3 }}>Auto-saved</span>
@@ -147,7 +147,7 @@ export default function App() {
           <div style={{ padding: 12, borderBottom: `1px solid ${border}` }}>
             <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 10px", border: `1px solid ${border}`, borderRadius: 8, background: bg2 }}>
               <span style={{ fontSize: 12, color: text3 }}>🔍</span>
-              <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search bords..." style={{ border: "none", outline: "none", background: "transparent", fontSize: 12, color: text, width: "100%" }} />
+              <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search boards..." style={{ border: "none", outline: "none", background: "transparent", fontSize: 12, color: text, width: "100%" }} />
             </div>
           </div>
           <div style={{ flex: 1, overflowY: "auto" }}>
@@ -177,7 +177,7 @@ export default function App() {
         <div ref={canvasRef} style={{ flex: 1, position: "relative", overflow: "hidden", background: bg3, backgroundImage: `radial-gradient(circle, ${dark ? "#2a2a2a" : "#d1d5db"} 1px, transparent 1px)`, backgroundSize: "20px 20px" }}>
           <div style={{ position: "absolute", top: 14, left: 16 }}>
             <span style={{ fontSize: 13, fontWeight: 500, color: text2, background: bg, border: `1px solid ${border}`, borderRadius: 8, padding: "4px 10px" }}>
-              {activeBord ? activeBord.name : "Select or create a bord →"}
+              {activeBord ? activeBord.name : "Select or create a board →"}
             </span>
           </div>
 
