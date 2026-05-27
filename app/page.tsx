@@ -34,7 +34,7 @@ function LandingPage({ onEnter, theme }: { onEnter: () => void; theme: Theme }) 
           Meeting notes that<br /><span style={{ color: "#1D9E75" }}>actually make sense.</span>
         </h1>
         <p style={{ fontSize: 18, color: dark ? "#888" : "#666", maxWidth: 500, lineHeight: 1.7, marginBottom: 40, fontFamily: "sans-serif", fontWeight: 300 }}>
-          Whitebord is a visual, collaborative workspace for meetings, brainstorming, and planning. Fast, minimal, and built around how you actually think.
+          Workboard is a visual, collaborative workspace for meetings, brainstorming, and planning. Fast, minimal, and built around how you actually think.
         </p>
         <div style={{ display: "flex", gap: 12 }}>
           <button onClick={onEnter} style={{ padding: "14px 32px", background: "#1D9E75", color: "#fff", border: "none", borderRadius: 10, fontSize: 15, cursor: "pointer", fontFamily: "sans-serif", fontWeight: 500 }}>Get started free</button>
@@ -54,7 +54,7 @@ function LandingPage({ onEnter, theme }: { onEnter: () => void; theme: Theme }) 
         </div>
       </div>
       <footer style={{ padding: "20px 40px", borderTop: `1px solid ${dark ? "#1a1a1a" : "#f0f0f0"}`, display: "flex", justifyContent: "space-between", fontSize: 12, color: dark ? "#555" : "#aaa", fontFamily: "sans-serif" }}>
-        <span>© 2025 Whitebord</span><span>Privacy · Terms</span>
+        <span>© 2025 Workboard</span><span>Privacy · Terms</span>
       </footer>
     </div>
   );
@@ -278,7 +278,7 @@ export default function App() {
                 </button>
               ))}
             </div>
-            <p style={{ fontSize: 11, color: text3, marginTop: 20, textAlign: "center" }}>Whitebord v1.0.0</p>
+            <p style={{ fontSize: 11, color: text3, marginTop: 20, textAlign: "center" }}>Workboard v1.0.0</p>
           </div>
         </div>
       )}

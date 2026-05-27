@@ -8,13 +8,12 @@ const geistSans = Geist({
 });
 
 const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+ 
 });
 
 export const metadata: Metadata = {
-  title: "Whitebord",
-  description: "Visual meeting notes that actually make sense.",
+ title: "Workboard",
+  description: "Workboard — visual meeting notes that actually make sense.",
   icons: {
     icon: "/favicon.svg",
   },
