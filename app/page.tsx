@@ -108,7 +108,7 @@ export default function App() {
 
   const handleAddBord = (templateId?: string) => {
     const template = TEMPLATES.find(t => t.id === templateId);
-    const name = newBordName.trim() || template?.name || "New Bord";
+    const name = newBordName.trim() || template?.name || "Add Board";
     const id = Date.now().toString();
     setBords(prev => [{ id, name, color: template?.color || newBordColor, createdAt: new Date() }, ...prev]);
     setActiveBordId(id);
@@ -139,7 +139,7 @@ export default function App() {
         <span style={{ fontSize: 11, color: text3 }}>Auto-saved</span>
         <button style={{ padding: "5px 10px", border: `1px solid ${border}`, borderRadius: 8, fontSize: 12, color: text2, cursor: "pointer", background: "transparent" }}>Share</button>
         <button style={{ padding: "5px 10px", border: `1px solid ${border}`, borderRadius: 8, fontSize: 12, color: text2, cursor: "pointer", background: "transparent" }}>Export</button>
-        <button onClick={() => setShowTemplates(true)} style={{ padding: "5px 12px", background: "#1D9E75", color: "#fff", border: "none", borderRadius: 8, fontSize: 12, cursor: "pointer" }}>+ Add Bord</button>
+        <button onClick={() => setShowTemplates(true)} style={{ padding: "5px 12px", background: "#1D9E75", color: "#fff", border: "none", borderRadius: 8, fontSize: 12, cursor: "pointer" }}>+ Add Board</button>
       </div>
 
       <div style={{ display: "flex", flex: 1, minHeight: 0 }}>
@@ -154,8 +154,8 @@ export default function App() {
             <p style={{ padding: "10px 12px 4px", fontSize: 10, fontWeight: 500, letterSpacing: "0.6px", color: text3, textTransform: "uppercase" }}>Bords</p>
             {filteredBords.length === 0 && (
               <div style={{ padding: "20px 12px", textAlign: "center" }}>
-                <p style={{ fontSize: 12, color: text3, marginBottom: 8 }}>No bords yet</p>
-                <button onClick={() => setShowTemplates(true)} style={{ fontSize: 12, color: "#1D9E75", background: "none", border: "none", cursor: "pointer" }}>+ Create your first bord</button>
+                <p style={{ fontSize: 12, color: text3, marginBottom: 8 }}>No boards yet</p>
+                <button onClick={() => setShowTemplates(true)} style={{ fontSize: 12, color: "#1D9E75", background: "none", border: "none", cursor: "pointer" }}>+ Create your first board</button>
               </div>
             )}
             {filteredBords.map(b => (
@@ -165,7 +165,7 @@ export default function App() {
             ))}
           </div>
           <div style={{ padding: "8px 12px" }}>
-            <button onClick={() => setShowTemplates(true)} style={{ width: "100%", padding: "7px 10px", border: `1px dashed ${border}`, borderRadius: 8, fontSize: 12, color: text3, cursor: "pointer", background: "transparent" }}>+ Add Bord</button>
+            <button onClick={() => setShowTemplates(true)} style={{ width: "100%", padding: "7px 10px", border: `1px dashed ${border}`, borderRadius: 8, fontSize: 12, color: text3, cursor: "pointer", background: "transparent" }}>+ Add Board</button>
           </div>
           <div style={{ padding: "10px 12px", borderTop: `1px solid ${border}`, display: "flex", alignItems: "center", gap: 8 }}>
             <button onClick={() => setShowSettings(true)} style={{ fontSize: 12, color: text3, background: "none", border: "none", cursor: "pointer" }}>⚙ Settings</button>
@@ -184,7 +184,7 @@ export default function App() {
           {!activeBordId && (
             <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16 }}>
               <p style={{ fontSize: 32 }}>🗒️</p>
-              <p style={{ fontSize: 15, color: text2, fontWeight: 500 }}>No bord selected</p>
+              <p style={{ fontSize: 15, color: text2, fontWeight: 500 }}>No board selected</p>
               <p style={{ fontSize: 13, color: text3 }}>Create a bord to get started</p>
               <button onClick={() => setShowTemplates(true)} style={{ padding: "10px 24px", background: "#1D9E75", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, cursor: "pointer" }}>+ Create Bord</button>
             </div>
@@ -224,10 +224,10 @@ export default function App() {
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200 }}>
           <div style={{ background: bg, borderRadius: 16, padding: 28, width: 480, border: `1px solid ${border}` }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-              <h2 style={{ fontSize: 16, fontWeight: 600, color: text }}>New Bord</h2>
+              <h2 style={{ fontSize: 16, fontWeight: 600, color: text }}>Add Board</h2>
               <button onClick={() => setShowTemplates(false)} style={{ background: "none", border: "none", cursor: "pointer", color: text2, fontSize: 18 }}>×</button>
             </div>
-            <input value={newBordName} onChange={e => setNewBordName(e.target.value)} placeholder="Bord name..."
+            <input value={newBordName} onChange={e => setNewBordName(e.target.value)} placeholder="board name..."
               style={{ width: "100%", padding: "10px 14px", border: `1px solid ${border}`, borderRadius: 8, fontSize: 13, background: bg2, color: text, outline: "none", marginBottom: 16, boxSizing: "border-box" }} />
             <p style={{ fontSize: 11, color: text3, marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.5px", fontWeight: 500 }}>Choose a template</p>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 16 }}>
