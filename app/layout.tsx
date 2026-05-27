@@ -6,6 +6,7 @@ export const metadata: Metadata = {
   description: "Workboard — visual meeting notes that actually make sense.",
   icons: {
     icon: "/favicon.svg",
+    apple: "/favicon.svg",
   },
 };
 
