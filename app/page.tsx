@@ -27,7 +27,7 @@ const BOARD_COLORS = ["#1D9E75","#7F77DD","#EF9F27","#D85A30","#378ADD","#E05C94
 function LandingPage({ onEnter, onLogin, theme }: { onEnter: () => void; onLogin: () => void; theme: Theme }) {
   const dark = theme === "dark";
   return (
-    <div style={{ minHeight: "100vh", background: dark ? "#0F0F0F" : "#ffffff", color: dark ? "#f0f0f0" : "#1a1a1a", fontFamily: "'Georgia', serif", display: "flex", flexDirection: "column" }}>
+    <div style={{ minheight: "100dvh", background: dark ? "#0F0F0F" : "#ffffff", color: dark ? "#f0f0f0" : "#1a1a1a", fontFamily: "'Georgia', serif", display: "flex", flexDirection: "column" }}>
       <nav style={{ display: "flex", alignItems: "center", padding: "20px 40px", borderBottom: `1px solid ${dark ? "#222" : "#f0f0f0"}` }}>
         <span style={{ fontSize: 20, fontWeight: 600, letterSpacing: -0.5 }}>Work<span style={{ color: "#1D9E75" }}>board</span></span>
         <div style={{ flex: 1 }} />
@@ -87,7 +87,7 @@ function AuthPage({ mode, onSuccess, onSwitch, theme }: { mode: "login" | "signu
   };
 
   return (
-    <div style={{ minHeight: "100vh", background: bg, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "sans-serif" }}>
+    <div style={{ minheight: "100dvh", background: bg, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "sans-serif" }}>
       <div style={{ width: 380, background: bg2, border: `1px solid ${border}`, borderRadius: 16, padding: 32 }}>
         <h2 style={{ fontSize: 22, fontWeight: 600, color: text, marginBottom: 6, textAlign: "center" }}>Work<span style={{ color: "#1D9E75" }}>board</span></h2>
         <p style={{ fontSize: 14, color: text2, textAlign: "center", marginBottom: 28 }}>{mode === "signup" ? "Create your free account" : "Welcome back"}</p>
@@ -135,11 +135,11 @@ function SharedBoardView({ shareId, theme }: { shareId: string; theme: Theme }) 
     load();
   }, [shareId]);
 
-  if (loading) return <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: bg, fontSize: 14, color: text2, fontFamily: "sans-serif" }}>Loading board...</div>;
-  if (!board) return <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: bg, fontSize: 14, color: text2, fontFamily: "sans-serif" }}>Board not found or not shared.</div>;
+  if (loading) return <div style={{ minheight: "100dvh", display: "flex", alignItems: "center", justifyContent: "center", background: bg, fontSize: 14, color: text2, fontFamily: "sans-serif" }}>Loading board...</div>;
+  if (!board) return <div style={{ minheight: "100dvh", display: "flex", alignItems: "center", justifyContent: "center", background: bg, fontSize: 14, color: text2, fontFamily: "sans-serif" }}>Board not found or not shared.</div>;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100vh", background: bg, fontFamily: "sans-serif" }}>
+    <div style={{ display: "flex", flexDirection: "column", height: "100dvh", background: bg, fontFamily: "sans-serif" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "0 16px", height: 48, borderBottom: `1px solid ${border}`, background: bg }}>
         <span style={{ fontSize: 15, fontWeight: 600, color: text, fontFamily: "Georgia, serif" }}>Work<span style={{ color: "#1D9E75" }}>board</span></span>
         <div style={{ flex: 1 }} />
@@ -288,13 +288,13 @@ export default function App() {
     setBoards([]); setStickies([]); setActiveBoardId(""); setView("landing");
   };
 
-  if (loading) return <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#fff", fontSize: 14, color: "#aaa", fontFamily: "sans-serif" }}>Loading...</div>;
+  if (loading) return <div style={{ minheight: "100dvh", display: "flex", alignItems: "center", justifyContent: "center", background: "#fff", fontSize: 14, color: "#aaa", fontFamily: "sans-serif" }}>Loading...</div>;
   if (view === "shared") return <SharedBoardView shareId={sharedBoardId} theme={theme} />;
   if (view === "landing") return <LandingPage onEnter={() => { setAuthMode("signup"); setView("auth"); }} onLogin={() => { setAuthMode("login"); setView("auth"); }} theme={theme} />;
   if (view === "auth") return <AuthPage mode={authMode} onSuccess={() => setView("app")} onSwitch={() => setAuthMode(authMode === "signup" ? "login" : "signup")} theme={theme} />;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100vh", background: bg, color: text, fontFamily: "sans-serif" }} onMouseMove={onMouseMove} onMouseUp={onMouseUp}>
+    <div style={{ display: "flex", flexDirection: "column", height: "100dvh", background: bg, color: text, fontFamily: "sans-serif" }} onMouseMove={onMouseMove} onMouseUp={onMouseUp}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "0 16px", height: 48, borderBottom: `1px solid ${border}`, background: bg, flexShrink: 0 }}>
         <button onClick={() => setView("landing")} style={{ fontSize: 15, fontWeight: 600, letterSpacing: -0.3, background: "none", border: "none", cursor: "pointer", color: text, fontFamily: "Georgia, serif" }}>
           Work<span style={{ color: "#1D9E75" }}>board</span>
