@@ -5,20 +5,18 @@ import { createClient } from "@supabase/supabase-js";
 const supabase = createClient(
   "https://qhmipgdtemabmqhhjbeb.supabase.co",
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFobWlwZ2R0ZW1hYm1xaGhqYmViIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgxNjA5ODQsImV4cCI6MjEwMzczNjk4NH0.HvPsKjKoJmlD274QNiXhUPIA-RqRyNY1JGJsTJLTkZM",
-  {
-    auth: {
-      persistSession: true,
-      storageKey: "workboard-auth",
-    }
-  }
+  { auth: { persistSession: true, storageKey: "workboard-auth" } }
 );
 
 type Theme = "light" | "dark";
 type View = "landing" | "auth" | "app" | "shared";
 type StickyColor = "#FAEEDA" | "#E1F5EE" | "#EEEDFE" | "#FCE8E8" | "#E8F0FC";
+type SharePermission = "view" | "edit";
 
-interface Board { id: string; name: string; color: string; created_at: string; shared: boolean; share_id: string; }
+interface Board { id: string; name: string; color: string; created_at: string; shared: boolean; share_id: string; share_permission: SharePermission; }
 interface StickyNote { id: string; x: number; y: number; text: string; color: StickyColor; emoji: string; board_id: string; }
+
+const FREE_BOARD_LIMIT = 4;
 
 const TEMPLATES = [
   { id: "meeting", name: "Team Meeting", icon: "👥", color: "#1D9E75", description: "Agenda, action items, decisions" },
@@ -48,7 +46,7 @@ function LandingPage({ onEnter, onLogin, theme }: { onEnter: () => void; onLogin
         <p style={{ fontSize: 18, color: dark ? "#888" : "#666", maxWidth: 500, lineHeight: 1.7, marginBottom: 40, fontFamily: "sans-serif", fontWeight: 300 }}>
           Workboard is a visual, collaborative workspace for meetings, brainstorming, and planning.
         </p>
-        <div style={{ display: "flex", gap: 12 }}>
+        <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center" }}>
           <button onClick={onEnter} style={{ padding: "14px 32px", background: "#1D9E75", color: "#fff", border: "none", borderRadius: 10, fontSize: 15, cursor: "pointer", fontFamily: "sans-serif", fontWeight: 500 }}>Get started free</button>
           <button onClick={onLogin} style={{ padding: "14px 32px", background: "transparent", border: `1px solid ${dark ? "#333" : "#e0e0e0"}`, borderRadius: 10, fontSize: 15, cursor: "pointer", color: dark ? "#aaa" : "#555", fontFamily: "sans-serif" }}>Log in</button>
         </div>
@@ -56,6 +54,16 @@ function LandingPage({ onEnter, onLogin, theme }: { onEnter: () => void; onLogin
           {["∞ Infinite canvas","Real-time collab","AI summaries","Templates","Share boards","PDF export"].map(f => (
             <span key={f} style={{ padding: "6px 14px", borderRadius: 20, fontSize: 12, background: dark ? "#1a1a1a" : "#f5f5f5", border: `1px solid ${dark ? "#2a2a2a" : "#e8e8e8"}`, color: dark ? "#aaa" : "#555", fontFamily: "sans-serif" }}>{f}</span>
           ))}
+        </div>
+        <div style={{ marginTop: 40, display: "flex", gap: 16, flexWrap: "wrap", justifyContent: "center" }}>
+          <div style={{ background: dark ? "#1a1a1a" : "#f8f8f8", border: `1px solid ${dark ? "#222" : "#e8e8e8"}`, borderRadius: 12, padding: "16px 24px", textAlign: "center", fontFamily: "sans-serif" }}>
+            <div style={{ fontSize: 22, fontWeight: 700, color: "#1D9E75" }}>Free</div>
+            <div style={{ fontSize: 13, color: dark ? "#888" : "#666", marginTop: 4 }}>4 boards · Basic features</div>
+          </div>
+          <div style={{ background: "#1D9E75", borderRadius: 12, padding: "16px 24px", textAlign: "center", fontFamily: "sans-serif" }}>
+            <div style={{ fontSize: 22, fontWeight: 700, color: "#fff" }}>Pro $9/mo</div>
+            <div style={{ fontSize: 13, color: "#9FE1CB", marginTop: 4 }}>Unlimited boards · All features</div>
+          </div>
         </div>
       </div>
       <footer style={{ padding: "20px 40px", borderTop: `1px solid ${dark ? "#1a1a1a" : "#f0f0f0"}`, display: "flex", justifyContent: "space-between", fontSize: 12, color: dark ? "#555" : "#aaa", fontFamily: "sans-serif" }}>
@@ -94,7 +102,7 @@ function AuthPage({ mode, onSuccess, onSwitch, theme }: { mode: "login" | "signu
 
   return (
     <div style={{ minHeight: "100dvh", background: bg, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "sans-serif" }}>
-      <div style={{ width: 380, background: bg2, border: `1px solid ${border}`, borderRadius: 16, padding: 32 }}>
+      <div style={{ width: 380, background: bg2, border: `1px solid ${border}`, borderRadius: 16, padding: 32, margin: "0 16px" }}>
         <h2 style={{ fontSize: 22, fontWeight: 600, color: text, marginBottom: 6, textAlign: "center" }}>Work<span style={{ color: "#1D9E75" }}>board</span></h2>
         <p style={{ fontSize: 14, color: text2, textAlign: "center", marginBottom: 28 }}>{mode === "signup" ? "Create your free account" : "Welcome back"}</p>
         <input value={email} onChange={e => setEmail(e.target.value)} placeholder="Email address" type="email"
@@ -127,6 +135,9 @@ function SharedBoardView({ shareId, theme }: { shareId: string; theme: Theme }) 
   const [board, setBoard] = useState<Board | null>(null);
   const [stickies, setStickies] = useState<StickyNote[]>([]);
   const [loading, setLoading] = useState(true);
+  const [newStickyText, setNewStickyText] = useState("");
+  const [dragging, setDragging] = useState<string | null>(null);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
 
   useEffect(() => {
     const load = async () => {
@@ -139,22 +150,63 @@ function SharedBoardView({ shareId, theme }: { shareId: string; theme: Theme }) 
       setLoading(false);
     };
     load();
+    const channel = supabase.channel(`shared-${shareId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "stickies" }, () => load())
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
   }, [shareId]);
+
+  const onMouseDown = useCallback((e: React.MouseEvent, id: string) => {
+    if (!board || board.share_permission !== "edit") return;
+    const sticky = stickies.find(s => s.id === id);
+    if (!sticky) return;
+    setDragging(id);
+    setDragOffset({ x: e.clientX - sticky.x, y: e.clientY - sticky.y });
+    e.preventDefault();
+  }, [stickies, board]);
+
+  const onMouseMove = useCallback((e: React.MouseEvent) => {
+    if (!dragging) return;
+    setStickies(prev => prev.map(s => s.id === dragging ? { ...s, x: e.clientX - dragOffset.x, y: e.clientY - dragOffset.y } : s));
+  }, [dragging, dragOffset]);
+
+  const onMouseUp = useCallback(async () => {
+    if (dragging) {
+      const sticky = stickies.find(s => s.id === dragging);
+      if (sticky) await supabase.from("stickies").update({ x: sticky.x, y: sticky.y }).eq("id", sticky.id);
+    }
+    setDragging(null);
+  }, [dragging, stickies]);
+
+  const handleAddSticky = async () => {
+    if (!newStickyText.trim() || !board) return;
+    const colors: StickyColor[] = ["#FAEEDA", "#E1F5EE", "#EEEDFE", "#FCE8E8", "#E8F0FC"];
+    const emojis = ["💡", "🚩", "❓", "⚠️", "📌"];
+    const idx = stickies.length % colors.length;
+    const { data } = await supabase.from("stickies").insert({ board_id: board.id, text: newStickyText, color: colors[idx], emoji: emojis[idx], x: 60 + (stickies.length % 4) * 200, y: 80 + Math.floor(stickies.length / 4) * 180 }).select().single();
+    if (data) setStickies(prev => [...prev, data]);
+    setNewStickyText("");
+  };
 
   if (loading) return <div style={{ minHeight: "100dvh", display: "flex", alignItems: "center", justifyContent: "center", background: bg, fontSize: 14, color: text2, fontFamily: "sans-serif" }}>Loading board...</div>;
   if (!board) return <div style={{ minHeight: "100dvh", display: "flex", alignItems: "center", justifyContent: "center", background: bg, fontSize: 14, color: text2, fontFamily: "sans-serif" }}>Board not found or not shared.</div>;
 
+  const canEdit = board.share_permission === "edit";
+
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100dvh", background: bg, fontFamily: "sans-serif" }}>
+    <div style={{ display: "flex", flexDirection: "column", height: "100dvh", background: bg, fontFamily: "sans-serif" }} onMouseMove={onMouseMove} onMouseUp={onMouseUp}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "0 16px", height: 48, borderBottom: `1px solid ${border}`, background: bg }}>
         <span style={{ fontSize: 15, fontWeight: 600, color: text, fontFamily: "Georgia, serif" }}>Work<span style={{ color: "#1D9E75" }}>board</span></span>
         <div style={{ flex: 1 }} />
-        <span style={{ fontSize: 12, background: "#E1F5EE", color: "#0F6E56", padding: "3px 10px", borderRadius: 20, fontWeight: 500 }}>👁 View only</span>
+        <span style={{ fontSize: 12, background: canEdit ? "#E1F5EE" : "#F1EFE8", color: canEdit ? "#0F6E56" : "#666", padding: "3px 10px", borderRadius: 20, fontWeight: 500 }}>
+          {canEdit ? "✏️ Can edit" : "👁 View only"}
+        </span>
         <span style={{ fontSize: 13, fontWeight: 500, color: text2, background: bg2, border: `1px solid ${border}`, borderRadius: 8, padding: "4px 10px" }}>{board.name}</span>
       </div>
       <div style={{ flex: 1, position: "relative", background: bg3, backgroundImage: `radial-gradient(circle, ${dark ? "#2a2a2a" : "#d1d5db"} 1px, transparent 1px)`, backgroundSize: "20px 20px" }}>
         {stickies.map(s => (
-          <div key={s.id} style={{ position: "absolute", left: s.x, top: s.y, width: 160, padding: 12, borderRadius: 10, background: s.color, color: "#333", fontSize: 12, lineHeight: 1.5, boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }}>
+          <div key={s.id} onMouseDown={e => onMouseDown(e, s.id)}
+            style={{ position: "absolute", left: s.x, top: s.y, width: 160, padding: 12, borderRadius: 10, background: s.color, color: "#333", fontSize: 12, lineHeight: 1.5, cursor: canEdit ? (dragging === s.id ? "grabbing" : "grab") : "default", userSelect: "none", boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }}>
             <div style={{ fontSize: 10, fontWeight: 500, marginBottom: 6, opacity: 0.7 }}>{s.emoji}</div>
             {s.text}
           </div>
@@ -162,6 +214,15 @@ function SharedBoardView({ shareId, theme }: { shareId: string; theme: Theme }) 
         {stickies.length === 0 && (
           <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
             <p style={{ fontSize: 14, color: text2 }}>This board is empty</p>
+          </div>
+        )}
+        {canEdit && (
+          <div style={{ position: "absolute", bottom: 20, left: "50%", transform: "translateX(-50%)", display: "flex", gap: 8, background: bg, border: `1px solid ${border}`, borderRadius: 24, padding: "6px 10px", boxShadow: "0 2px 12px rgba(0,0,0,0.08)" }}>
+            <input value={newStickyText} onChange={e => setNewStickyText(e.target.value)}
+              onKeyDown={e => e.key === "Enter" && handleAddSticky()}
+              placeholder="Add a sticky note and press Enter..."
+              style={{ border: "none", outline: "none", background: "transparent", fontSize: 12, color: text, width: 260 }} />
+            <button onClick={handleAddSticky} style={{ padding: "4px 12px", background: "#1D9E75", color: "#fff", border: "none", borderRadius: 16, fontSize: 12, cursor: "pointer" }}>Add</button>
           </div>
         )}
       </div>
@@ -174,12 +235,14 @@ export default function App() {
   const [authMode, setAuthMode] = useState<"login" | "signup">("signup");
   const [theme, setTheme] = useState<Theme>("light");
   const [user, setUser] = useState<any>(null);
+  const [isPro, setIsPro] = useState(false);
   const [boards, setBoards] = useState<Board[]>([]);
   const [activeBoardId, setActiveBoardId] = useState("");
   const [stickies, setStickies] = useState<StickyNote[]>([]);
   const [showTemplates, setShowTemplates] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [newBoardName, setNewBoardName] = useState("");
   const [newBoardColor, setNewBoardColor] = useState(BOARD_COLORS[0]);
   const [dragging, setDragging] = useState<string | null>(null);
@@ -191,6 +254,7 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [copiedLink, setCopiedLink] = useState(false);
   const [sharedBoardId, setSharedBoardId] = useState("");
+  const [sharePermission, setSharePermission] = useState<SharePermission>("view");
 
   const dark = theme === "dark";
   const bg = dark ? "#0F0F0F" : "#ffffff";
@@ -203,6 +267,7 @@ export default function App() {
 
   const activeBoard = boards.find(b => b.id === activeBoardId);
   const filteredBoards = boards.filter(b => b.name.toLowerCase().includes(search.toLowerCase()));
+  const atBoardLimit = !isPro && boards.length >= FREE_BOARD_LIMIT;
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -256,10 +321,11 @@ export default function App() {
   }, [dragging, stickies]);
 
   const handleAddBoard = async (templateId?: string) => {
+    if (atBoardLimit) { setShowTemplates(false); setShowUpgradeModal(true); return; }
     const template = TEMPLATES.find(t => t.id === templateId);
     const name = newBoardName.trim() || template?.name || "New Board";
     const color = template?.color || newBoardColor;
-    const { data } = await supabase.from("boards").insert({ name, color, user_id: user.id }).select().single();
+    const { data } = await supabase.from("boards").insert({ name, color, user_id: user.id, shared: false, share_permission: "view" }).select().single();
     if (data) { setBoards(prev => [data, ...prev]); setActiveBoardId(data.id); setStickies([]); }
     setNewBoardName(""); setShowTemplates(false);
   };
@@ -277,8 +343,17 @@ export default function App() {
   const handleToggleShare = async () => {
     if (!activeBoard) return;
     const newShared = !activeBoard.shared;
-    await supabase.from("boards").update({ shared: newShared }).eq("id", activeBoard.id);
-    setBoards(prev => prev.map(b => b.id === activeBoard.id ? { ...b, shared: newShared } : b));
+    await supabase.from("boards").update({ shared: newShared, share_permission: sharePermission }).eq("id", activeBoard.id);
+    setBoards(prev => prev.map(b => b.id === activeBoard.id ? { ...b, shared: newShared, share_permission: sharePermission } : b));
+  };
+
+  const handleUpdatePermission = async (perm: SharePermission) => {
+    if (!activeBoard) return;
+    setSharePermission(perm);
+    if (activeBoard.shared) {
+      await supabase.from("boards").update({ share_permission: perm }).eq("id", activeBoard.id);
+      setBoards(prev => prev.map(b => b.id === activeBoard.id ? { ...b, share_permission: perm } : b));
+    }
   };
 
   const handleCopyLink = () => {
@@ -309,7 +384,7 @@ export default function App() {
         <span style={{ fontSize: 11, color: text3 }}>Auto-saved</span>
         {activeBoardId && <button onClick={() => setShowShareModal(true)} style={{ padding: "5px 10px", border: `1px solid ${border}`, borderRadius: 8, fontSize: 12, color: text2, cursor: "pointer", background: "transparent" }}>🔗 Share</button>}
         <button onClick={() => setShowSettings(true)} style={{ padding: "5px 10px", border: `1px solid ${border}`, borderRadius: 8, fontSize: 12, color: text2, cursor: "pointer", background: "transparent" }}>⚙</button>
-        <button onClick={() => setShowTemplates(true)} style={{ padding: "5px 12px", background: "#1D9E75", color: "#fff", border: "none", borderRadius: 8, fontSize: 12, cursor: "pointer" }}>+ Add Board</button>
+        <button onClick={() => atBoardLimit ? setShowUpgradeModal(true) : setShowTemplates(true)} style={{ padding: "5px 12px", background: "#1D9E75", color: "#fff", border: "none", borderRadius: 8, fontSize: 12, cursor: "pointer" }}>+ Add Board</button>
       </div>
 
       <div style={{ display: "flex", flex: 1, minHeight: 0 }}>
@@ -321,7 +396,10 @@ export default function App() {
             </div>
           </div>
           <div style={{ flex: 1, overflowY: "auto" }}>
-            <p style={{ padding: "10px 12px 4px", fontSize: 10, fontWeight: 500, letterSpacing: "0.6px", color: text3, textTransform: "uppercase" }}>Boards</p>
+            <div style={{ padding: "10px 12px 4px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <span style={{ fontSize: 10, fontWeight: 500, letterSpacing: "0.6px", color: text3, textTransform: "uppercase" }}>Boards</span>
+              {!isPro && <span style={{ fontSize: 10, color: text3 }}>{boards.length}/{FREE_BOARD_LIMIT}</span>}
+            </div>
             {filteredBoards.length === 0 && (
               <div style={{ padding: "20px 12px", textAlign: "center" }}>
                 <p style={{ fontSize: 12, color: text3, marginBottom: 8 }}>No boards yet</p>
@@ -334,14 +412,22 @@ export default function App() {
                 {b.shared && <span style={{ fontSize: 10, marginLeft: 4 }}>🔗</span>}
               </div>
             ))}
+            {atBoardLimit && (
+              <div onClick={() => setShowUpgradeModal(true)} style={{ margin: "8px 12px", padding: "10px", background: "#E1F5EE", borderRadius: 8, cursor: "pointer", textAlign: "center" }}>
+                <p style={{ fontSize: 11, color: "#0F6E56", fontWeight: 500 }}>✨ Upgrade to Pro</p>
+                <p style={{ fontSize: 10, color: "#1D9E75", marginTop: 2 }}>Unlock unlimited boards</p>
+              </div>
+            )}
           </div>
           <div style={{ padding: "8px 12px" }}>
-            <button onClick={() => setShowTemplates(true)} style={{ width: "100%", padding: "7px 10px", border: `1px dashed ${border}`, borderRadius: 8, fontSize: 12, color: text3, cursor: "pointer", background: "transparent" }}>+ Add Board</button>
+            <button onClick={() => atBoardLimit ? setShowUpgradeModal(true) : setShowTemplates(true)} style={{ width: "100%", padding: "7px 10px", border: `1px dashed ${border}`, borderRadius: 8, fontSize: 12, color: atBoardLimit ? "#1D9E75" : text3, cursor: "pointer", background: "transparent" }}>
+              {atBoardLimit ? "✨ Upgrade for more" : "+ Add Board"}
+            </button>
           </div>
           <div style={{ padding: "10px 12px", borderTop: `1px solid ${border}`, display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ fontSize: 11, color: text3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 120 }}>{user?.email}</span>
+            <button onClick={() => setShowSettings(true)} style={{ fontSize: 12, color: text3, background: "none", border: "none", cursor: "pointer" }}>⚙ Settings</button>
             <div style={{ flex: 1 }} />
-            <span style={{ fontSize: 10, background: "#E1F5EE", color: "#0F6E56", padding: "2px 7px", borderRadius: 20, fontWeight: 500 }}>Pro</span>
+            <span onClick={() => setShowUpgradeModal(true)} style={{ fontSize: 10, background: isPro ? "#E1F5EE" : "#F1EFE8", color: isPro ? "#0F6E56" : "#888", padding: "2px 7px", borderRadius: 20, fontWeight: 500, cursor: "pointer" }}>{isPro ? "Pro ✓" : "Free"}</span>
           </div>
         </div>
 
@@ -357,7 +443,7 @@ export default function App() {
               <p style={{ fontSize: 32 }}>🗒️</p>
               <p style={{ fontSize: 15, color: text2, fontWeight: 500 }}>No board selected</p>
               <p style={{ fontSize: 13, color: text3 }}>Create a board to get started</p>
-              <button onClick={() => setShowTemplates(true)} style={{ padding: "10px 24px", background: "#1D9E75", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, cursor: "pointer" }}>+ Create Board</button>
+              <button onClick={() => atBoardLimit ? setShowUpgradeModal(true) : setShowTemplates(true)} style={{ padding: "10px 24px", background: "#1D9E75", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, cursor: "pointer" }}>+ Create Board</button>
             </div>
           )}
 
@@ -395,6 +481,32 @@ export default function App() {
         </div>
       </div>
 
+      {showUpgradeModal && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 300 }}>
+          <div style={{ background: bg, borderRadius: 16, padding: 32, width: 380, border: `1px solid ${border}`, textAlign: "center" }}>
+            <div style={{ fontSize: 32, marginBottom: 12 }}>✨</div>
+            <h2 style={{ fontSize: 20, fontWeight: 700, color: text, marginBottom: 8 }}>Upgrade to Pro</h2>
+            <p style={{ fontSize: 14, color: text2, marginBottom: 24, lineHeight: 1.6 }}>You've reached the free limit of {FREE_BOARD_LIMIT} boards. Upgrade to Pro for unlimited boards, all templates, and priority support.</p>
+            <div style={{ display: "flex", gap: 12, marginBottom: 20 }}>
+              <div style={{ flex: 1, padding: "12px", border: `1px solid ${border}`, borderRadius: 10 }}>
+                <div style={{ fontSize: 16, fontWeight: 600, color: text }}>Free</div>
+                <div style={{ fontSize: 13, color: text3, marginTop: 4 }}>4 boards</div>
+                <div style={{ fontSize: 13, color: text3 }}>Basic features</div>
+              </div>
+              <div style={{ flex: 1, padding: "12px", background: "#1D9E75", borderRadius: 10 }}>
+                <div style={{ fontSize: 16, fontWeight: 600, color: "#fff" }}>Pro $9/mo</div>
+                <div style={{ fontSize: 13, color: "#9FE1CB", marginTop: 4 }}>Unlimited boards</div>
+                <div style={{ fontSize: 13, color: "#9FE1CB" }}>All features</div>
+              </div>
+            </div>
+            <button onClick={() => { setIsPro(true); setShowUpgradeModal(false); }} style={{ width: "100%", padding: "12px", background: "#1D9E75", color: "#fff", border: "none", borderRadius: 8, fontSize: 14, cursor: "pointer", fontWeight: 500, marginBottom: 10 }}>
+              Upgrade to Pro
+            </button>
+            <button onClick={() => setShowUpgradeModal(false)} style={{ background: "none", border: "none", cursor: "pointer", color: text3, fontSize: 13 }}>Maybe later</button>
+          </div>
+        </div>
+      )}
+
       {showShareModal && activeBoard && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200 }}>
           <div style={{ background: bg, borderRadius: 16, padding: 28, width: 400, border: `1px solid ${border}` }}>
@@ -402,10 +514,19 @@ export default function App() {
               <h2 style={{ fontSize: 16, fontWeight: 600, color: text }}>Share Board</h2>
               <button onClick={() => setShowShareModal(false)} style={{ background: "none", border: "none", cursor: "pointer", color: text2, fontSize: 18 }}>×</button>
             </div>
+            <p style={{ fontSize: 11, color: text3, marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.5px", fontWeight: 500 }}>Permission</p>
+            <div style={{ display: "flex", background: bg2, borderRadius: 10, padding: 4, marginBottom: 16, border: `1px solid ${border}` }}>
+              {(["view", "edit"] as SharePermission[]).map(p => (
+                <button key={p} onClick={() => handleUpdatePermission(p)}
+                  style={{ flex: 1, padding: "7px 0", borderRadius: 7, fontSize: 13, cursor: "pointer", border: "none", background: (activeBoard.share_permission || sharePermission) === p ? bg : "transparent", color: (activeBoard.share_permission || sharePermission) === p ? text : text3, fontWeight: (activeBoard.share_permission || sharePermission) === p ? 500 : 400 }}>
+                  {p === "view" ? "👁 View only" : "✏️ Can edit"}
+                </button>
+              ))}
+            </div>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 14px", border: `1px solid ${border}`, borderRadius: 10, marginBottom: 16 }}>
               <div>
                 <p style={{ fontSize: 13, fontWeight: 500, color: text, margin: 0 }}>Public link sharing</p>
-                <p style={{ fontSize: 11, color: text3, margin: "2px 0 0" }}>Anyone with the link can view</p>
+                <p style={{ fontSize: 11, color: text3, margin: "2px 0 0" }}>Anyone with the link can {activeBoard.share_permission === "edit" ? "edit" : "view"}</p>
               </div>
               <div onClick={handleToggleShare} style={{ width: 40, height: 22, borderRadius: 11, background: activeBoard.shared ? "#1D9E75" : border, cursor: "pointer", position: "relative", transition: "background 0.2s" }}>
                 <div style={{ width: 16, height: 16, borderRadius: "50%", background: "#fff", position: "absolute", top: 3, left: activeBoard.shared ? 21 : 3, transition: "left 0.2s" }} />
@@ -478,7 +599,15 @@ export default function App() {
                 </button>
               ))}
             </div>
-            <p style={{ fontSize: 11, color: text3, textTransform: "uppercase", letterSpacing: "0.5px", fontWeight: 500, marginBottom: 12 }}>Account</p>
+            <p style={{ fontSize: 11, color: text3, textTransform: "uppercase", letterSpacing: "0.5px", fontWeight: 500, marginBottom: 12 }}>Plan</p>
+            <div style={{ padding: "12px 14px", border: `1px solid ${border}`, borderRadius: 8, marginBottom: 8, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div>
+                <p style={{ fontSize: 13, fontWeight: 500, color: text, margin: 0 }}>{isPro ? "Pro Plan" : "Free Plan"}</p>
+                <p style={{ fontSize: 11, color: text3, margin: "2px 0 0" }}>{isPro ? "Unlimited boards" : `${boards.length}/${FREE_BOARD_LIMIT} boards used`}</p>
+              </div>
+              {!isPro && <button onClick={() => { setShowSettings(false); setShowUpgradeModal(true); }} style={{ padding: "6px 12px", background: "#1D9E75", color: "#fff", border: "none", borderRadius: 6, fontSize: 12, cursor: "pointer" }}>Upgrade</button>}
+            </div>
+            <p style={{ fontSize: 11, color: text3, textTransform: "uppercase", letterSpacing: "0.5px", fontWeight: 500, marginBottom: 12, marginTop: 16 }}>Account</p>
             <div style={{ padding: "10px 14px", border: `1px solid ${border}`, borderRadius: 8, marginBottom: 8 }}>
               <p style={{ fontSize: 12, color: text2, margin: 0 }}>{user?.email}</p>
             </div>
