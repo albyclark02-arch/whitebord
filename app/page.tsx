@@ -4,7 +4,13 @@ import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
   "https://qhmipgdtemabmqhhjbeb.supabase.co",
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFobWlwZ2R0ZW1hYm1xaGhqYmViIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgxNjA5ODQsImV4cCI6MjEwMzczNjk4NH0.HvPsKjKoJmlD274QNiXhUPIA-RqRyNY1JGJsTJLTkZM"
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFobWlwZ2R0ZW1hYm1xaGhqYmViIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgxNjA5ODQsImV4cCI6MjEwMzczNjk4NH0.HvPsKjKoJmlD274QNiXhUPIA-RqRyNY1JGJsTJLTkZM",
+  {
+    auth: {
+      persistSession: true,
+      storageKey: "workboard-auth",
+    }
+  }
 );
 
 type Theme = "light" | "dark";
