@@ -481,7 +481,15 @@ export default function App() {
                 <div style={{ fontSize:12, color:"#9FE1CB" }}>Unlimited boards</div>
               </div>
             </div>
-            <button onClick={()=>{ setIsPro(true); setShowUpgradeModal(false); }} style={{ width:"100%", padding:"12px", background:"#1D9E75", color:"#fff", border:"none", borderRadius:8, fontSize:14, cursor:"pointer", fontWeight:500, marginBottom:10 }}>
+            <button onClick={async () => {
+              const res = await fetch("/api/create-checkout-session", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ userId: user.id, email: user.email }),
+              });
+              const { url } = await res.json();
+              window.location.href = url;
+            }} style={{ width:"100%", padding:"12px", background:"#1D9E75", color:"#fff", border:"none", borderRadius:8, fontSize:14, cursor:"pointer", fontWeight:500, marginBottom:10 }}>
               Upgrade to Pro — $9/mo
             </button>
             <p style={{ fontSize:11, color:text3, marginBottom:12 }}>Stripe payment coming soon · Click to unlock now</p>
