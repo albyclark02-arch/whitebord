@@ -8,7 +8,6 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "", {
 export async function POST(req: Request) {
   const { userId, email } = await req.json();
   const session = await stripe.checkout.sessions.create({
-    payment_method_types: ["card"],
     mode: "subscription",
     line_items: [{ price: "price_1UBTftPhHMuJiKoYIxkwPSHr", quantity: 1 }],
     customer_email: email,
