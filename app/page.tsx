@@ -240,8 +240,20 @@ export default function App() {
     const params = new URLSearchParams(window.location.search);
     const shareId = params.get("share");
     if (shareId) { setSharedBoardId(shareId); setView("shared"); setLoading(false); return; }
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user??null); if (session?.user) setView("app"); setLoading(false);
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      setUser(session?.user??null);
+      if (session?.user) {
+        setView("app");
+        const { data: profile } = await supabase.from("profiles").select("is_pro").eq("id", session.user.id).single();
+        if (profile?.is_pro) setIsPro(true);
+      }
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("upgrade") === "success" && session?.user) {
+        await supabase.from("profiles").upsert({ id: session.user.id, is_pro: true });
+        setIsPro(true);
+        window.history.replaceState({}, "", "/");
+      }
+      setLoading(false);
     });
     supabase.auth.onAuthStateChange((_e, session) => {
       setUser(session?.user??null);
@@ -487,10 +499,8 @@ export default function App() {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ userId: user.id, email: user.email }),
               });
-              const data = await res.json();
-console.log("Stripe response:", data);
-if (data.url) window.location.href = data.url;
-else alert("Error: " + JSON.stringify(data));
+              const { url } = await res.json();
+              window.location.href = url;
             }} style={{ width:"100%", padding:"12px", background:"#1D9E75", color:"#fff", border:"none", borderRadius:8, fontSize:14, cursor:"pointer", fontWeight:500, marginBottom:10 }}>
               Upgrade to Pro — $9/mo
             </button>
