@@ -1,5 +1,5 @@
 "use client";
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
@@ -10,23 +10,27 @@ const supabase = createClient(
 
 type Theme = "light" | "dark";
 type View = "landing" | "auth" | "app" | "shared";
-type IdeaColor = "#EF9F27" | "#1D9E75" | "#7F77DD" | "#D85A30" | "#378ADD";
+type IdeaColor = "#EF9F27" | "#1D9E75" | "#7F77DD" | "#D85A30" | "#378ADD" | "#E05C94" | "#2BBCD4" | "#8BC34A";
 type SharePermission = "view" | "edit";
+type IdeaType = "lightbulb" | "flag" | "question" | "alert" | "pin" | "task" | "star" | "heart";
 
 interface Board { id: string; name: string; color: string; created_at: string; shared: boolean; share_id: string; share_permission: SharePermission; }
 interface Idea { id: string; x: number; y: number; text: string; color: IdeaColor; icon: string; board_id: string; }
 
 const FREE_BOARD_LIMIT = 4;
 
-const IDEA_ICONS = [
+const IDEA_ICONS: { id: IdeaType; label: string; svg: React.ReactNode }[] = [
   { id: "lightbulb", label: "Idea", svg: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 18h6M10 22h4M12 2a7 7 0 0 1 7 7c0 2.5-1.3 4.7-3.3 6L15 17H9l-.7-2C6.3 13.7 5 11.5 5 9a7 7 0 0 1 7-7z"/></svg> },
   { id: "flag", label: "Priority", svg: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg> },
   { id: "question", label: "Question", svg: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> },
   { id: "alert", label: "Blocker", svg: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> },
   { id: "pin", label: "Note", svg: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg> },
+  { id: "task", label: "Task", svg: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg> },
+  { id: "star", label: "Key Point", svg: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> },
+  { id: "heart", label: "Win", svg: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg> },
 ];
 
-const IDEA_COLORS: IdeaColor[] = ["#EF9F27", "#1D9E75", "#7F77DD", "#D85A30", "#378ADD"];
+const IDEA_COLORS: IdeaColor[] = ["#EF9F27", "#1D9E75", "#7F77DD", "#D85A30", "#378ADD", "#E05C94", "#2BBCD4", "#8BC34A"];
 
 const TEMPLATES = [
   { id: "meeting", name: "Team Meeting", icon: "👥", color: "#1D9E75", description: "Agenda, action items, decisions" },
@@ -216,17 +220,26 @@ export default function App() {
   const [showShareModal, setShowShareModal] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [showDeleteBoardConfirm, setShowDeleteBoardConfirm] = useState(false);
+  const [showRenameModal, setShowRenameModal] = useState(false);
+  const [showAiModal, setShowAiModal] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
   const [newBoardName, setNewBoardName] = useState("");
+  const [renameBoardName, setRenameBoardName] = useState("");
   const [newBoardColor, setNewBoardColor] = useState(BOARD_COLORS[0]);
   const [dragging, setDragging] = useState<string|null>(null);
   const [dragOffset, setDragOffset] = useState({x:0,y:0});
   const [editingIdea, setEditingIdea] = useState<string|null>(null);
   const [search, setSearch] = useState("");
   const [newIdeaText, setNewIdeaText] = useState("");
+  const [newIdeaIcon, setNewIdeaIcon] = useState<IdeaType>("lightbulb");
+  const [newIdeaColor, setNewIdeaColor] = useState<IdeaColor>("#EF9F27");
   const [loading, setLoading] = useState(true);
   const [copiedLink, setCopiedLink] = useState(false);
   const [sharedBoardId, setSharedBoardId] = useState("");
   const [sharePermission, setSharePermission] = useState<SharePermission>("view");
+  const [aiSummary, setAiSummary] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
+  const [exportLoading, setExportLoading] = useState(false);
 
   const dark = theme === "dark";
   const bg = dark?"#0F0F0F":"#fff"; const bg2 = dark?"#1a1a1a":"#f8f8f8"; const bg3 = dark?"#141414":"#f3f3f3";
@@ -247,8 +260,8 @@ export default function App() {
         const { data: profile } = await supabase.from("profiles").select("is_pro").eq("id", session.user.id).single();
         if (profile?.is_pro) setIsPro(true);
       }
-      const params = new URLSearchParams(window.location.search);
-      if (params.get("upgrade") === "success" && session?.user) {
+      const p = new URLSearchParams(window.location.search);
+      if (p.get("upgrade") === "success" && session?.user) {
         await supabase.from("profiles").upsert({ id: session.user.id, is_pro: true });
         setIsPro(true);
         window.history.replaceState({}, "", "/");
@@ -300,6 +313,13 @@ export default function App() {
     setNewBoardName(""); setShowTemplates(false);
   };
 
+  const handleRenameBoard = async () => {
+    if (!activeBoardId || !renameBoardName.trim()) return;
+    await supabase.from("boards").update({ name: renameBoardName.trim() }).eq("id", activeBoardId);
+    setBoards(prev=>prev.map(b=>b.id===activeBoardId?{...b,name:renameBoardName.trim()}:b));
+    setShowRenameModal(false);
+  };
+
   const handleDeleteBoard = async () => {
     if (!activeBoardId) return;
     await supabase.from("stickies").delete().eq("board_id", activeBoardId);
@@ -315,9 +335,7 @@ export default function App() {
 
   const handleAddIdea = async () => {
     if (!newIdeaText.trim()||!activeBoardId) return;
-    const idx = ideas.length % IDEA_COLORS.length;
-    const iconIdx = ideas.length % IDEA_ICONS.length;
-    const { data } = await supabase.from("stickies").insert({ board_id:activeBoardId, text:newIdeaText, color:IDEA_COLORS[idx], icon:IDEA_ICONS[iconIdx].id, x:60+(ideas.length%4)*200, y:80+Math.floor(ideas.length/4)*180 }).select().single();
+    const { data } = await supabase.from("stickies").insert({ board_id:activeBoardId, text:newIdeaText, color:newIdeaColor, icon:newIdeaIcon, x:60+(ideas.length%4)*200, y:80+Math.floor(ideas.length/4)*180 }).select().single();
     if (data) setIdeas(prev=>[...prev,data]);
     setNewIdeaText("");
   };
@@ -340,6 +358,53 @@ export default function App() {
     setCopiedLink(true); setTimeout(()=>setCopiedLink(false),2000);
   };
 
+  const handleAiSummary = async () => {
+    if (!activeBoard || ideas.length === 0) return;
+    setAiLoading(true); setAiSummary("");
+    try {
+      const ideasText = ideas.map(i => `- [${IDEA_ICONS.find(ic=>ic.id===i.icon)?.label||"Idea"}] ${i.text}`).join("\n");
+      const prompt = `You are a meeting assistant. Summarise this board called "${activeBoard.name}" into a concise meeting summary with key points, decisions, action items, and blockers. Ideas:\n${ideasText}`;
+      const res = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-6",
+          max_tokens: 1000,
+          messages: [{ role: "user", content: prompt }]
+        })
+      });
+      const data = await res.json();
+      setAiSummary(data.content?.[0]?.text || "Could not generate summary.");
+    } catch { setAiSummary("Error generating summary. Please try again."); }
+    setAiLoading(false);
+  };
+
+  const handleExportMarkdown = () => {
+    if (!activeBoard) return;
+    const lines = [`# ${activeBoard.name}`, "", `*Exported ${new Date().toLocaleDateString()}*`, ""];
+    const grouped: Record<string, Idea[]> = {};
+    ideas.forEach(i => { const label = IDEA_ICONS.find(ic=>ic.id===i.icon)?.label||"Idea"; if (!grouped[label]) grouped[label]=[]; grouped[label].push(i); });
+    Object.entries(grouped).forEach(([label, group]) => {
+      lines.push(`## ${label}s`);
+      group.forEach(i => lines.push(`- ${i.text}`));
+      lines.push("");
+    });
+    const blob = new Blob([lines.join("\n")], { type: "text/markdown" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a"); a.href = url; a.download = `${activeBoard.name}.md`; a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleExportText = () => {
+    if (!activeBoard) return;
+    const lines = [`${activeBoard.name}`, `Exported ${new Date().toLocaleDateString()}`, ""];
+    ideas.forEach(i => { const label = IDEA_ICONS.find(ic=>ic.id===i.icon)?.label||"Idea"; lines.push(`[${label}] ${i.text}`); });
+    const blob = new Blob([lines.join("\n")], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a"); a.href = url; a.download = `${activeBoard.name}.txt`; a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const handleSignOut = async () => { await supabase.auth.signOut(); setBoards([]); setIdeas([]); setActiveBoardId(""); setView("landing"); };
 
   if (loading) return <div style={{ minHeight:"100dvh", display:"flex", alignItems:"center", justifyContent:"center", background:"#fff", fontSize:14, color:"#aaa", fontFamily:"sans-serif" }}>Loading...</div>;
@@ -351,23 +416,26 @@ export default function App() {
     <div style={{ display:"flex", flexDirection:"column", height:"100dvh", background:bg, color:text, fontFamily:"sans-serif" }} onMouseMove={onMouseMove} onMouseUp={onMouseUp}>
 
       {/* Topbar */}
-      <div style={{ display:"flex", alignItems:"center", gap:8, padding:"0 16px", height:48, borderBottom:`1px solid ${border}`, background:bg, flexShrink:0 }}>
+      <div style={{ display:"flex", alignItems:"center", gap:6, padding:"0 12px", height:48, borderBottom:`1px solid ${border}`, background:bg, flexShrink:0 }}>
         <button onClick={()=>setView("landing")} style={{ fontSize:15, fontWeight:600, background:"none", border:"none", cursor:"pointer", color:text, fontFamily:"Georgia, serif" }}>Work<span style={{ color:"#1D9E75" }}>board</span></button>
         <div style={{ flex:1 }}/>
         <span style={{ fontSize:11, color:text3 }}>Auto-saved</span>
-        {activeBoardId && <button onClick={()=>setShowShareModal(true)} style={{ padding:"5px 10px", border:`1px solid ${border}`, borderRadius:8, fontSize:12, color:text2, cursor:"pointer", background:"transparent" }}>🔗 Share</button>}
-        {activeBoardId && <button onClick={()=>setShowDeleteBoardConfirm(true)} style={{ padding:"5px 10px", border:`1px solid #E05C5C`, borderRadius:8, fontSize:12, color:"#E05C5C", cursor:"pointer", background:"transparent" }}>Delete board</button>}
-        <button onClick={()=>setShowSettings(true)} style={{ padding:"5px 10px", border:`1px solid ${border}`, borderRadius:8, fontSize:12, color:text2, cursor:"pointer", background:"transparent" }}>⚙</button>
-        <button onClick={()=>atBoardLimit?setShowUpgradeModal(true):setShowTemplates(true)} style={{ padding:"5px 12px", background:"#1D9E75", color:"#fff", border:"none", borderRadius:8, fontSize:12, cursor:"pointer" }}>+ Add Board</button>
+        {activeBoardId && <button onClick={()=>{setRenameBoardName(activeBoard?.name||"");setShowRenameModal(true);}} style={{ padding:"5px 8px", border:`1px solid ${border}`, borderRadius:8, fontSize:11, color:text2, cursor:"pointer", background:"transparent" }}>Rename</button>}
+        {activeBoardId && <button onClick={()=>setShowShareModal(true)} style={{ padding:"5px 8px", border:`1px solid ${border}`, borderRadius:8, fontSize:11, color:text2, cursor:"pointer", background:"transparent" }}>🔗 Share</button>}
+        {activeBoardId && <button onClick={()=>setShowExportModal(true)} style={{ padding:"5px 8px", border:`1px solid ${border}`, borderRadius:8, fontSize:11, color:text2, cursor:"pointer", background:"transparent" }}>Export</button>}
+        {activeBoardId && <button onClick={()=>{setShowAiModal(true);handleAiSummary();}} style={{ padding:"5px 8px", border:`1px solid #7F77DD`, borderRadius:8, fontSize:11, color:"#7F77DD", cursor:"pointer", background:"transparent" }}>✦ AI Summary</button>}
+        {activeBoardId && <button onClick={()=>setShowDeleteBoardConfirm(true)} style={{ padding:"5px 8px", border:`1px solid #E05C5C`, borderRadius:8, fontSize:11, color:"#E05C5C", cursor:"pointer", background:"transparent" }}>Delete</button>}
+        <button onClick={()=>setShowSettings(true)} style={{ padding:"5px 8px", border:`1px solid ${border}`, borderRadius:8, fontSize:11, color:text2, cursor:"pointer", background:"transparent" }}>⚙</button>
+        <button onClick={()=>atBoardLimit?setShowUpgradeModal(true):setShowTemplates(true)} style={{ padding:"5px 10px", background:"#1D9E75", color:"#fff", border:"none", borderRadius:8, fontSize:11, cursor:"pointer" }}>+ Board</button>
       </div>
 
       <div style={{ display:"flex", flex:1, minHeight:0 }}>
         {/* Sidebar */}
-        <div style={{ width:220, borderRight:`1px solid ${border}`, display:"flex", flexDirection:"column", background:bg, flexShrink:0 }}>
-          <div style={{ padding:12, borderBottom:`1px solid ${border}` }}>
+        <div style={{ width:200, borderRight:`1px solid ${border}`, display:"flex", flexDirection:"column", background:bg, flexShrink:0 }}>
+          <div style={{ padding:10, borderBottom:`1px solid ${border}` }}>
             <div style={{ display:"flex", alignItems:"center", gap:6, padding:"6px 10px", border:`1px solid ${border}`, borderRadius:8, background:bg2 }}>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={text3} strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-              <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search boards..." style={{ border:"none", outline:"none", background:"transparent", fontSize:12, color:text, width:"100%" }}/>
+              <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search..." style={{ border:"none", outline:"none", background:"transparent", fontSize:12, color:text, width:"100%" }}/>
             </div>
           </div>
           <div style={{ flex:1, overflowY:"auto" }}>
@@ -378,13 +446,13 @@ export default function App() {
             {filteredBoards.length===0 && (
               <div style={{ padding:"20px 12px", textAlign:"center" }}>
                 <p style={{ fontSize:12, color:text3, marginBottom:8 }}>No boards yet</p>
-                <button onClick={()=>setShowTemplates(true)} style={{ fontSize:12, color:"#1D9E75", background:"none", border:"none", cursor:"pointer" }}>+ Create your first board</button>
+                <button onClick={()=>setShowTemplates(true)} style={{ fontSize:12, color:"#1D9E75", background:"none", border:"none", cursor:"pointer" }}>+ Create one</button>
               </div>
             )}
             {filteredBoards.map(b => (
               <div key={b.id} onClick={()=>setActiveBoardId(b.id)} style={{ height:36, display:"flex", alignItems:"center", padding:"0 12px", fontSize:13, cursor:"pointer", background:b.color, color:"#fff", fontWeight:b.id===activeBoardId?600:400, opacity:b.id===activeBoardId?1:0.85 }}>
                 <span style={{ flex:1, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{b.name}</span>
-                {b.shared && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" style={{ marginLeft:4 }}><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>}
+                {b.shared && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" style={{ marginLeft:4, flexShrink:0 }}><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>}
               </div>
             ))}
             {atBoardLimit && (
@@ -394,13 +462,13 @@ export default function App() {
               </div>
             )}
           </div>
-          <div style={{ padding:"8px 12px" }}>
+          <div style={{ padding:"8px 10px" }}>
             <button onClick={()=>atBoardLimit?setShowUpgradeModal(true):setShowTemplates(true)} style={{ width:"100%", padding:"7px 10px", border:`1px dashed ${border}`, borderRadius:8, fontSize:12, color:atBoardLimit?"#1D9E75":text3, cursor:"pointer", background:"transparent" }}>
               {atBoardLimit?"✨ Upgrade for more":"+ Add Board"}
             </button>
           </div>
           <div style={{ padding:"10px 12px", borderTop:`1px solid ${border}`, display:"flex", alignItems:"center", gap:8 }}>
-            <button onClick={()=>setShowSettings(true)} style={{ fontSize:12, color:text3, background:"none", border:"none", cursor:"pointer" }}>⚙ Settings</button>
+            <button onClick={()=>setShowSettings(true)} style={{ fontSize:12, color:text3, background:"none", border:"none", cursor:"pointer" }}>⚙</button>
             <div style={{ flex:1 }}/>
             <span onClick={()=>!isPro&&setShowUpgradeModal(true)} style={{ fontSize:10, background:isPro?"#E1F5EE":"#F1EFE8", color:isPro?"#0F6E56":"#888", padding:"2px 7px", borderRadius:20, fontWeight:500, cursor:"pointer" }}>{isPro?"Pro ✓":"Free"}</span>
           </div>
@@ -409,9 +477,8 @@ export default function App() {
         {/* Canvas */}
         <div style={{ flex:1, position:"relative", overflow:"hidden", background:bg3, backgroundImage:`radial-gradient(circle, ${dark?"#2a2a2a":"#d1d5db"} 1px, transparent 1px)`, backgroundSize:"20px 20px" }}>
 
-          {/* Board title bar */}
           {activeBoard && (
-            <div style={{ position:"absolute", top:0, left:0, right:0, padding:"10px 16px", background:bg, borderBottom:`1px solid ${border}`, display:"flex", alignItems:"center", gap:8, zIndex:5 }}>
+            <div style={{ position:"absolute", top:0, left:0, right:0, padding:"8px 16px", background:bg, borderBottom:`1px solid ${border}`, display:"flex", alignItems:"center", gap:8, zIndex:5 }}>
               <div style={{ width:10, height:10, borderRadius:"50%", background:activeBoard.color, flexShrink:0 }}/>
               <span style={{ fontSize:14, fontWeight:600, color:text }}>{activeBoard.name}</span>
               <span style={{ fontSize:11, color:text3 }}>· {ideas.length} idea{ideas.length!==1?"s":""}</span>
@@ -431,7 +498,7 @@ export default function App() {
             const iconDef = IDEA_ICONS.find(i=>i.id===s.icon)||IDEA_ICONS[0];
             return (
               <div key={s.id} onMouseDown={e=>onMouseDown(e,s.id)} onDoubleClick={()=>setEditingIdea(s.id)}
-                style={{ position:"absolute", left:s.x, top:s.y+(activeBoard?44:0), width:160, padding:12, borderRadius:10, background:bg, border:`2px solid ${s.color}`, color:text, fontSize:12, lineHeight:1.5, cursor:dragging===s.id?"grabbing":"grab", userSelect:"none", boxShadow:"0 2px 8px rgba(0,0,0,0.06)", zIndex:dragging===s.id?100:1 }}>
+                style={{ position:"absolute", left:s.x, top:s.y+(activeBoard?40:0), width:160, padding:12, borderRadius:10, background:bg, border:`2px solid ${s.color}`, color:text, fontSize:12, lineHeight:1.5, cursor:dragging===s.id?"grabbing":"grab", userSelect:"none", boxShadow:"0 2px 8px rgba(0,0,0,0.06)", zIndex:dragging===s.id?100:1 }}>
                 <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:6 }}>
                   <div style={{ display:"flex", alignItems:"center", gap:5, color:s.color }}>
                     {iconDef.svg}
@@ -449,16 +516,89 @@ export default function App() {
           })}
 
           {activeBoardId && (
-            <div style={{ position:"absolute", bottom:20, left:"50%", transform:"translateX(-50%)", display:"flex", gap:8, background:bg, border:`1px solid ${border}`, borderRadius:24, padding:"6px 10px", boxShadow:"0 2px 12px rgba(0,0,0,0.08)", zIndex:10 }}>
-              <input value={newIdeaText} onChange={e=>setNewIdeaText(e.target.value)}
-                onKeyDown={e=>e.key==="Enter"&&handleAddIdea()}
-                placeholder="Add an idea and press Enter..."
-                style={{ border:"none", outline:"none", background:"transparent", fontSize:12, color:text, width:260 }}/>
-              <button onClick={handleAddIdea} style={{ padding:"4px 12px", background:"#1D9E75", color:"#fff", border:"none", borderRadius:16, fontSize:12, cursor:"pointer" }}>Add</button>
+            <div style={{ position:"absolute", bottom:20, left:"50%", transform:"translateX(-50%)", display:"flex", flexDirection:"column", alignItems:"center", gap:8, zIndex:10 }}>
+              <div style={{ display:"flex", gap:6 }}>
+                {IDEA_ICONS.map(ic=>(
+                  <button key={ic.id} onClick={()=>setNewIdeaIcon(ic.id)} title={ic.label}
+                    style={{ width:28, height:28, borderRadius:"50%", border:`2px solid ${newIdeaIcon===ic.id?newIdeaColor:border}`, background:newIdeaIcon===ic.id?newIdeaColor+"22":"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", color:newIdeaIcon===ic.id?newIdeaColor:text3 }}>
+                    {ic.svg}
+                  </button>
+                ))}
+                <div style={{ width:1, background:border, margin:"0 4px" }}/>
+                {IDEA_COLORS.map(c=>(
+                  <button key={c} onClick={()=>setNewIdeaColor(c)}
+                    style={{ width:20, height:20, borderRadius:"50%", background:c, border:newIdeaColor===c?"2px solid #1a1a1a":"2px solid transparent", cursor:"pointer" }}/>
+                ))}
+              </div>
+              <div style={{ display:"flex", gap:8, background:bg, border:`1px solid ${border}`, borderRadius:24, padding:"6px 10px", boxShadow:"0 2px 12px rgba(0,0,0,0.08)" }}>
+                <input value={newIdeaText} onChange={e=>setNewIdeaText(e.target.value)}
+                  onKeyDown={e=>e.key==="Enter"&&handleAddIdea()}
+                  placeholder="Add an idea and press Enter..."
+                  style={{ border:"none", outline:"none", background:"transparent", fontSize:12, color:text, width:260 }}/>
+                <button onClick={handleAddIdea} style={{ padding:"4px 12px", background:"#1D9E75", color:"#fff", border:"none", borderRadius:16, fontSize:12, cursor:"pointer" }}>Add</button>
+              </div>
             </div>
           )}
         </div>
       </div>
+
+      {/* Rename modal */}
+      {showRenameModal && (
+        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.4)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:300 }}>
+          <div style={{ background:bg, borderRadius:16, padding:28, width:360, border:`1px solid ${border}` }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
+              <h2 style={{ fontSize:16, fontWeight:600, color:text }}>Rename Board</h2>
+              <button onClick={()=>setShowRenameModal(false)} style={{ background:"none", border:"none", cursor:"pointer", color:text2, fontSize:18 }}>×</button>
+            </div>
+            <input value={renameBoardName} onChange={e=>setRenameBoardName(e.target.value)} onKeyDown={e=>e.key==="Enter"&&handleRenameBoard()}
+              placeholder="Board name..." autoFocus
+              style={{ width:"100%", padding:"10px 14px", border:`1px solid ${border}`, borderRadius:8, fontSize:13, background:bg2, color:text, outline:"none", marginBottom:16, boxSizing:"border-box" }}/>
+            <div style={{ display:"flex", gap:10 }}>
+              <button onClick={()=>setShowRenameModal(false)} style={{ flex:1, padding:"10px", border:`1px solid ${border}`, borderRadius:8, background:"transparent", cursor:"pointer", color:text2, fontSize:13 }}>Cancel</button>
+              <button onClick={handleRenameBoard} style={{ flex:1, padding:"10px", border:"none", borderRadius:8, background:"#1D9E75", cursor:"pointer", color:"#fff", fontSize:13, fontWeight:500 }}>Rename</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* AI Summary modal */}
+      {showAiModal && (
+        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.4)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:300 }}>
+          <div style={{ background:bg, borderRadius:16, padding:28, width:480, maxHeight:"80vh", overflow:"auto", border:`1px solid ${border}` }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
+              <h2 style={{ fontSize:16, fontWeight:600, color:text }}>✦ AI Meeting Summary</h2>
+              <button onClick={()=>setShowAiModal(false)} style={{ background:"none", border:"none", cursor:"pointer", color:text2, fontSize:18 }}>×</button>
+            </div>
+            {aiLoading && <p style={{ fontSize:13, color:text2 }}>Generating summary...</p>}
+            {aiSummary && <p style={{ fontSize:13, color:text, lineHeight:1.7, whiteSpace:"pre-wrap" }}>{aiSummary}</p>}
+            {aiSummary && (
+              <button onClick={()=>{navigator.clipboard.writeText(aiSummary);}} style={{ marginTop:16, padding:"8px 16px", border:`1px solid ${border}`, borderRadius:8, background:"transparent", cursor:"pointer", color:text2, fontSize:12 }}>Copy summary</button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Export modal */}
+      {showExportModal && (
+        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.4)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:300 }}>
+          <div style={{ background:bg, borderRadius:16, padding:28, width:360, border:`1px solid ${border}` }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
+              <h2 style={{ fontSize:16, fontWeight:600, color:text }}>Export Board</h2>
+              <button onClick={()=>setShowExportModal(false)} style={{ background:"none", border:"none", cursor:"pointer", color:text2, fontSize:18 }}>×</button>
+            </div>
+            <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+              <button onClick={()=>{handleExportMarkdown();setShowExportModal(false);}} style={{ padding:"12px 14px", border:`1px solid ${border}`, borderRadius:10, background:bg2, cursor:"pointer", textAlign:"left", color:text }}>
+                <p style={{ fontSize:13, fontWeight:500, margin:0 }}>Markdown (.md)</p>
+                <p style={{ fontSize:11, color:text3, margin:"2px 0 0" }}>Great for Notion, GitHub, and docs</p>
+              </button>
+              <button onClick={()=>{handleExportText();setShowExportModal(false);}} style={{ padding:"12px 14px", border:`1px solid ${border}`, borderRadius:10, background:bg2, cursor:"pointer", textAlign:"left", color:text }}>
+                <p style={{ fontSize:13, fontWeight:500, margin:0 }}>Plain text (.txt)</p>
+                <p style={{ fontSize:11, color:text3, margin:"2px 0 0" }}>Simple text file, works anywhere</p>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Delete board confirm */}
       {showDeleteBoardConfirm && (
@@ -481,7 +621,7 @@ export default function App() {
           <div style={{ background:bg, borderRadius:16, padding:32, width:380, border:`1px solid ${border}`, textAlign:"center" }}>
             <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#1D9E75" strokeWidth="1.5" style={{ marginBottom:12 }}><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
             <h2 style={{ fontSize:20, fontWeight:700, color:text, marginBottom:8 }}>Upgrade to Pro</h2>
-            <p style={{ fontSize:14, color:text2, marginBottom:24, lineHeight:1.6 }}>You've reached the {FREE_BOARD_LIMIT} board free limit. Upgrade to Pro for unlimited boards, all templates, and priority support.</p>
+            <p style={{ fontSize:14, color:text2, marginBottom:24, lineHeight:1.6 }}>You've reached the {FREE_BOARD_LIMIT} board free limit. Upgrade to Pro for unlimited boards and all features.</p>
             <div style={{ display:"flex", gap:12, marginBottom:20 }}>
               <div style={{ flex:1, padding:"12px", border:`1px solid ${border}`, borderRadius:10 }}>
                 <div style={{ fontSize:16, fontWeight:600, color:text }}>Free</div>
@@ -494,17 +634,12 @@ export default function App() {
               </div>
             </div>
             <button onClick={async () => {
-              const res = await fetch("/api/create-checkout-session", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ userId: user.id, email: user.email }),
-              });
-              const { url } = await res.json();
-              window.location.href = url;
+              const res = await fetch("/api/create-checkout-session", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({userId:user.id,email:user.email}) });
+              const data = await res.json();
+              if (data.url) window.location.href = data.url;
             }} style={{ width:"100%", padding:"12px", background:"#1D9E75", color:"#fff", border:"none", borderRadius:8, fontSize:14, cursor:"pointer", fontWeight:500, marginBottom:10 }}>
               Upgrade to Pro — $9/mo
             </button>
-            <p style={{ fontSize:11, color:text3, marginBottom:12 }}>Stripe payment coming soon · Click to unlock now</p>
             <button onClick={()=>setShowUpgradeModal(false)} style={{ background:"none", border:"none", cursor:"pointer", color:text3, fontSize:13 }}>Maybe later</button>
           </div>
         </div>
