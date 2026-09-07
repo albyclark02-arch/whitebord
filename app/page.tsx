@@ -162,7 +162,6 @@ function SharedBoardView({ shareId, theme }: { shareId: string; theme: Theme }) 
     const idx = ideas.length % IDEA_COLORS.length;
     const iconIdx = ideas.length % IDEA_ICONS.length;
     const { data, error } = await supabase.from("stickies").insert({ board_id:board.id, text:newText, color:IDEA_COLORS[idx], icon:IDEA_ICONS[iconIdx].id, x:60+(ideas.length%4)*200, y:80+Math.floor(ideas.length/4)*180 }).select().single();
-    if (error) { alert("Error: " + error.message); return; }
     if (data) setIdeas(prev=>[...prev,data]);
     setNewText("");
   };
@@ -353,7 +352,6 @@ export default function App() {
     if (!newIdeaText.trim()||!activeBoardId) return;
     const { data, error } = await supabase.from("stickies").insert({ board_id:activeBoardId, text:newIdeaText, color:newIdeaColor, icon:newIdeaIcon, x:60+(ideas.length%4)*200, y:80+Math.floor(ideas.length/4)*180 }).select().single();
     if (error) { alert("Error: " + error.message + " | Code: " + error.code); return; }
-    if (error) { alert("Error: " + error.message); return; }
     if (data) setIdeas(prev=>[...prev,data]);
     setNewIdeaText("");
   };
