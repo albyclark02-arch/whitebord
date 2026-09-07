@@ -161,7 +161,8 @@ function SharedBoardView({ shareId, theme }: { shareId: string; theme: Theme }) 
     if (!newText.trim()||!board) return;
     const idx = ideas.length % IDEA_COLORS.length;
     const iconIdx = ideas.length % IDEA_ICONS.length;
-    const { data } = await supabase.from("stickies").insert({ board_id:board.id, text:newText, color:IDEA_COLORS[idx], icon:IDEA_ICONS[iconIdx].id, x:60+(ideas.length%4)*200, y:80+Math.floor(ideas.length/4)*180 }).select().single();
+    const { data, error } = await supabase.from("stickies").insert({ board_id:board.id, text:newText, color:IDEA_COLORS[idx], icon:IDEA_ICONS[iconIdx].id, x:60+(ideas.length%4)*200, y:80+Math.floor(ideas.length/4)*180 }).select().single();
+    if (error) { alert("Error: " + error.message); return; }
     if (data) setIdeas(prev=>[...prev,data]);
     setNewText("");
   };
@@ -268,9 +269,13 @@ export default function App() {
       }
       setLoading(false);
     });
-    supabase.auth.onAuthStateChange((_e, session) => {
+    supabase.auth.onAuthStateChange(async (_e, session) => {
       setUser(session?.user??null);
-      if (session?.user) { setView("app"); loadBoards(); }
+      if (session?.user) {
+        setView("app"); loadBoards();
+        const { data: profile } = await supabase.from("profiles").select("is_pro").eq("id", session.user.id).single();
+        if (profile?.is_pro) setIsPro(true);
+      }
       else if (!sharedBoardId) setView("landing");
     });
   }, []);
@@ -283,7 +288,18 @@ export default function App() {
     if (!activeBoardId) { setIdeas([]); return; }
     loadIdeas(activeBoardId);
     const ch = supabase.channel(`board-${activeBoardId}`)
-      .on("postgres_changes", { event:"*", schema:"public", table:"stickies", filter:`board_id=eq.${activeBoardId}` }, () => loadIdeas(activeBoardId))
+      .on("postgres_changes", { event:"INSERT", schema:"public", table:"stickies", filter:`board_id=eq.${activeBoardId}` }, (payload) => {
+        setIdeas(prev => {
+          if (prev.find(i => i.id === payload.new.id)) return prev;
+          return [...prev, payload.new as Idea];
+        });
+      })
+      .on("postgres_changes", { event:"UPDATE", schema:"public", table:"stickies", filter:`board_id=eq.${activeBoardId}` }, (payload) => {
+        setIdeas(prev => prev.map(i => i.id === payload.new.id ? payload.new as Idea : i));
+      })
+      .on("postgres_changes", { event:"DELETE", schema:"public", table:"stickies", filter:`board_id=eq.${activeBoardId}` }, (payload) => {
+        setIdeas(prev => prev.filter(i => i.id !== payload.old.id));
+      })
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [activeBoardId]);
@@ -335,7 +351,9 @@ export default function App() {
 
   const handleAddIdea = async () => {
     if (!newIdeaText.trim()||!activeBoardId) return;
-    const { data } = await supabase.from("stickies").insert({ board_id:activeBoardId, text:newIdeaText, color:newIdeaColor, icon:newIdeaIcon, x:60+(ideas.length%4)*200, y:80+Math.floor(ideas.length/4)*180 }).select().single();
+    const { data, error } = await supabase.from("stickies").insert({ board_id:activeBoardId, text:newIdeaText, color:newIdeaColor, icon:newIdeaIcon, x:60+(ideas.length%4)*200, y:80+Math.floor(ideas.length/4)*180 }).select().single();
+    if (error) { alert("Error: " + error.message + " | Code: " + error.code); return; }
+    if (error) { alert("Error: " + error.message); return; }
     if (data) setIdeas(prev=>[...prev,data]);
     setNewIdeaText("");
   };
@@ -362,19 +380,14 @@ export default function App() {
     if (!activeBoard || ideas.length === 0) return;
     setAiLoading(true); setAiSummary("");
     try {
-      const ideasText = ideas.map(i => `- [${IDEA_ICONS.find(ic=>ic.id===i.icon)?.label||"Idea"}] ${i.text}`).join("\n");
-      const prompt = `You are a meeting assistant. Summarise this board called "${activeBoard.name}" into a concise meeting summary with key points, decisions, action items, and blockers. Ideas:\n${ideasText}`;
-      const res = await fetch("https://api.anthropic.com/v1/messages", {
+      const ideasPayload = ideas.map(i => ({ label: IDEA_ICONS.find(ic=>ic.id===i.icon)?.label||"Idea", text: i.text }));
+      const res = await fetch("/api/ai-summary", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "claude-sonnet-4-6",
-          max_tokens: 1000,
-          messages: [{ role: "user", content: prompt }]
-        })
+        body: JSON.stringify({ boardName: activeBoard.name, ideas: ideasPayload }),
       });
       const data = await res.json();
-      setAiSummary(data.content?.[0]?.text || "Could not generate summary.");
+      setAiSummary(data.summary || data.error || "Could not generate summary.");
     } catch { setAiSummary("Error generating summary. Please try again."); }
     setAiLoading(false);
   };
@@ -423,7 +436,7 @@ export default function App() {
         {activeBoardId && <button onClick={()=>{setRenameBoardName(activeBoard?.name||"");setShowRenameModal(true);}} style={{ padding:"5px 8px", border:`1px solid ${border}`, borderRadius:8, fontSize:11, color:text2, cursor:"pointer", background:"transparent" }}>Rename</button>}
         {activeBoardId && <button onClick={()=>setShowShareModal(true)} style={{ padding:"5px 8px", border:`1px solid ${border}`, borderRadius:8, fontSize:11, color:text2, cursor:"pointer", background:"transparent" }}>🔗 Share</button>}
         {activeBoardId && <button onClick={()=>setShowExportModal(true)} style={{ padding:"5px 8px", border:`1px solid ${border}`, borderRadius:8, fontSize:11, color:text2, cursor:"pointer", background:"transparent" }}>Export</button>}
-        {activeBoardId && <button onClick={()=>{setShowAiModal(true);handleAiSummary();}} style={{ padding:"5px 8px", border:`1px solid #7F77DD`, borderRadius:8, fontSize:11, color:"#7F77DD", cursor:"pointer", background:"transparent" }}>✦ AI Summary</button>}
+        {activeBoardId && <button onClick={()=>{ if (!isPro) { setShowUpgradeModal(true); return; } setShowAiModal(true); handleAiSummary(); }} style={{ padding:"5px 8px", border:`1px solid ${isPro?"#7F77DD":border}`, borderRadius:8, fontSize:11, color:isPro?"#7F77DD":text3, cursor:"pointer", background:"transparent" }} title={isPro?"Generate AI meeting summary":"Pro feature — upgrade to use AI Summary"}>✦ AI Summary{!isPro&&" 🔒"}</button>}
         {activeBoardId && <button onClick={()=>setShowDeleteBoardConfirm(true)} style={{ padding:"5px 8px", border:`1px solid #E05C5C`, borderRadius:8, fontSize:11, color:"#E05C5C", cursor:"pointer", background:"transparent" }}>Delete</button>}
         <button onClick={()=>setShowSettings(true)} style={{ padding:"5px 8px", border:`1px solid ${border}`, borderRadius:8, fontSize:11, color:text2, cursor:"pointer", background:"transparent" }}>⚙</button>
         <button onClick={()=>atBoardLimit?setShowUpgradeModal(true):setShowTemplates(true)} style={{ padding:"5px 10px", background:"#1D9E75", color:"#fff", border:"none", borderRadius:8, fontSize:11, cursor:"pointer" }}>+ Board</button>
@@ -519,14 +532,16 @@ export default function App() {
             <div style={{ position:"absolute", bottom:20, left:"50%", transform:"translateX(-50%)", display:"flex", flexDirection:"column", alignItems:"center", gap:8, zIndex:10 }}>
               <div style={{ display:"flex", gap:6 }}>
                 {IDEA_ICONS.map(ic=>(
-                  <button key={ic.id} onClick={()=>setNewIdeaIcon(ic.id)} title={ic.label}
-                    style={{ width:28, height:28, borderRadius:"50%", border:`2px solid ${newIdeaIcon===ic.id?newIdeaColor:border}`, background:newIdeaIcon===ic.id?newIdeaColor+"22":"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", color:newIdeaIcon===ic.id?newIdeaColor:text3 }}>
-                    {ic.svg}
-                  </button>
+                  <div key={ic.id} style={{ position:"relative" }}>
+                    <button onClick={()=>setNewIdeaIcon(ic.id)} title={ic.label}
+                      style={{ width:28, height:28, borderRadius:"50%", border:`2px solid ${newIdeaIcon===ic.id?newIdeaColor:border}`, background:newIdeaIcon===ic.id?newIdeaColor+"22":"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", color:newIdeaIcon===ic.id?newIdeaColor:text3 }}>
+                      {ic.svg}
+                    </button>
+                  </div>
                 ))}
                 <div style={{ width:1, background:border, margin:"0 4px" }}/>
                 {IDEA_COLORS.map(c=>(
-                  <button key={c} onClick={()=>setNewIdeaColor(c)}
+                  <button key={c} onClick={()=>setNewIdeaColor(c)} title={c}
                     style={{ width:20, height:20, borderRadius:"50%", background:c, border:newIdeaColor===c?"2px solid #1a1a1a":"2px solid transparent", cursor:"pointer" }}/>
                 ))}
               </div>
