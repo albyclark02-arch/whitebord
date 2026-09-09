@@ -2,8 +2,10 @@ import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
   try {
+    const key = process.env.ANTHROPIC_API_KEY;
+    if (!key) return NextResponse.json({ summary: "No API key found" });
+
     const { boardName, ideas } = await req.json();
-    
     const ideasText = ideas.map((i: any) => `- [${i.label}] ${i.text}`).join("\n");
     const prompt = `You are a meeting assistant. Summarise this board called "${boardName}" into a concise meeting summary with key points, decisions, action items, and blockers. Ideas:\n${ideasText}`;
 
@@ -11,7 +13,7 @@ export async function POST(req: Request) {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-api-key": process.env.ANTHROPIC_API_KEY || "",
+        "x-api-key": key.trim(),
         "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify({
@@ -22,9 +24,10 @@ export async function POST(req: Request) {
     });
 
     const data = await res.json();
+    if (data.error) return NextResponse.json({ summary: "Anthropic error: " + data.error.message });
     const summary = data.content?.[0]?.text || "Could not generate summary.";
     return NextResponse.json({ summary });
   } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json({ summary: "Exception: " + err.message });
   }
 }
