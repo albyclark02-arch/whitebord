@@ -16,7 +16,7 @@ export async function POST(req: Request) {
         "Authorization": `Bearer ${key.trim()}`,
       },
       body: JSON.stringify({
-        model: "mixtral-8x7b-32768",
+        model: "llama-3.1-8b-instant",
         max_tokens: 1000,
         messages: [{ role: "user", content: prompt }],
       }),
