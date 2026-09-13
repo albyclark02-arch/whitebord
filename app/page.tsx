@@ -351,7 +351,7 @@ export default function App() {
   const handleAddIdea = async () => {
     if (!newIdeaText.trim()||!activeBoardId) return;
     const { data, error } = await supabase.from("stickies").insert({ board_id:activeBoardId, text:newIdeaText, color:newIdeaColor, icon:newIdeaIcon, x:60+(ideas.length%4)*200, y:80+Math.floor(ideas.length/4)*180 }).select().single();
-    if (error) { alert("Error: " + error.message + " | Code: " + error.code); return; }
+    if (error) { console.error("Insert error:", error); return; }
     if (data) setIdeas(prev=>[...prev,data]);
     setNewIdeaText("");
   };
