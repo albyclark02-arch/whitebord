@@ -121,6 +121,7 @@ function SharedBoardView({ shareId, theme }: { shareId: string; theme: Theme }) 
   const [board, setBoard] = useState<Board|null>(null);
   const [ideas, setIdeas] = useState<Idea[]>([]);
   const [loading, setLoading] = useState(true);
+  useEffect(() => { const t = setTimeout(() => { setLoading(false); }, 5000); return () => clearTimeout(t); }, []);
   const [newText, setNewText] = useState("");
   const [dragging, setDragging] = useState<string|null>(null);
   const [dragOffset, setDragOffset] = useState({x:0,y:0});
@@ -234,6 +235,7 @@ export default function App() {
   const [newIdeaIcon, setNewIdeaIcon] = useState<IdeaType>("lightbulb");
   const [newIdeaColor, setNewIdeaColor] = useState<IdeaColor>("#EF9F27");
   const [loading, setLoading] = useState(true);
+  useEffect(() => { const t = setTimeout(() => { setLoading(false); }, 5000); return () => clearTimeout(t); }, []);
   const [copiedLink, setCopiedLink] = useState(false);
   const [sharedBoardId, setSharedBoardId] = useState("");
   const [sharePermission, setSharePermission] = useState<SharePermission>("view");
