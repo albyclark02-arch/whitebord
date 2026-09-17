@@ -121,7 +121,6 @@ function SharedBoardView({ shareId, theme }: { shareId: string; theme: Theme }) 
   const [board, setBoard] = useState<Board|null>(null);
   const [ideas, setIdeas] = useState<Idea[]>([]);
   const [loading, setLoading] = useState(true);
-  useEffect(() => { const t = setTimeout(() => { setLoading(false); }, 5000); return () => clearTimeout(t); }, []);
   const [newText, setNewText] = useState("");
   const [dragging, setDragging] = useState<string|null>(null);
   const [dragOffset, setDragOffset] = useState({x:0,y:0});
@@ -162,7 +161,7 @@ function SharedBoardView({ shareId, theme }: { shareId: string; theme: Theme }) 
     if (!newText.trim()||!board) return;
     const idx = ideas.length % IDEA_COLORS.length;
     const iconIdx = ideas.length % IDEA_ICONS.length;
-    const { data, error } = await supabase.from("stickies").insert({ board_id:board.id, text:newText, color:IDEA_COLORS[idx], icon:IDEA_ICONS[iconIdx].id, x:60+(ideas.length%4)*200, y:80+Math.floor(ideas.length/4)*180 }).select().single();
+    const { data } = await supabase.from("stickies").insert({ board_id:board.id, text:newText, color:IDEA_COLORS[idx], icon:IDEA_ICONS[iconIdx].id, x:60+(ideas.length%4)*200, y:80+Math.floor(ideas.length/4)*180 }).select().single();
     if (data) setIdeas(prev=>[...prev,data]);
     setNewText("");
   };
@@ -235,7 +234,7 @@ export default function App() {
   const [newIdeaIcon, setNewIdeaIcon] = useState<IdeaType>("lightbulb");
   const [newIdeaColor, setNewIdeaColor] = useState<IdeaColor>("#EF9F27");
   const [loading, setLoading] = useState(true);
-  useEffect(() => { const t = setTimeout(() => { setLoading(false); }, 5000); return () => clearTimeout(t); }, []);
+  useEffect(() => { const t = setTimeout(() => { setLoading(false); setView("landing"); }, 5000); return () => clearTimeout(t); }, []);
   const [copiedLink, setCopiedLink] = useState(false);
   const [sharedBoardId, setSharedBoardId] = useState("");
   const [sharePermission, setSharePermission] = useState<SharePermission>("view");
@@ -353,7 +352,7 @@ export default function App() {
   const handleAddIdea = async () => {
     if (!newIdeaText.trim()||!activeBoardId) return;
     const { data, error } = await supabase.from("stickies").insert({ board_id:activeBoardId, text:newIdeaText, color:newIdeaColor, icon:newIdeaIcon, x:60+(ideas.length%4)*200, y:80+Math.floor(ideas.length/4)*180 }).select().single();
-    if (error) { console.error("Insert error:", error); return; }
+    if (error) { alert("Error: " + error.message + " | Code: " + error.code); return; }
     if (data) setIdeas(prev=>[...prev,data]);
     setNewIdeaText("");
   };
@@ -579,7 +578,7 @@ export default function App() {
       {/* AI Summary modal */}
       {showAiModal && (
         <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.4)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:300 }}>
-          <div style={{ background:bg, borderRadius:16, padding:28, width:480, maxHeight:"80vh", overflow:"auto", border:`1px solid ${border}` }}>
+          <div style={{ background:bg, borderRadius:16, padding:28, width:"min(640px, 90vw)", maxHeight:"80vh", overflow:"auto", border:`1px solid ${border}` }}>
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
               <h2 style={{ fontSize:16, fontWeight:600, color:text }}>✦ AI Meeting Summary</h2>
               <button onClick={()=>setShowAiModal(false)} style={{ background:"none", border:"none", cursor:"pointer", color:text2, fontSize:18 }}>×</button>
