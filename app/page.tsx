@@ -234,7 +234,7 @@ export default function App() {
   const [newIdeaIcon, setNewIdeaIcon] = useState<IdeaType>("lightbulb");
   const [newIdeaColor, setNewIdeaColor] = useState<IdeaColor>("#EF9F27");
   const [loading, setLoading] = useState(true);
-  useEffect(() => { const t = setTimeout(() => { setLoading(false); setView("landing"); }, 5000); return () => clearTimeout(t); }, []);
+  useEffect(() => { const t = setTimeout(() => { setLoading(false); }, 8000); return () => clearTimeout(t); }, []);
   const [copiedLink, setCopiedLink] = useState(false);
   const [sharedBoardId, setSharedBoardId] = useState("");
   const [sharePermission, setSharePermission] = useState<SharePermission>("view");
