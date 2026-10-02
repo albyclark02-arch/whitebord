@@ -234,7 +234,7 @@ export default function App() {
   const [newIdeaIcon, setNewIdeaIcon] = useState<IdeaType>("lightbulb");
   const [newIdeaColor, setNewIdeaColor] = useState<IdeaColor>("#EF9F27");
   const [loading, setLoading] = useState(true);
-  useEffect(() => { const t = setTimeout(() => { setLoading(false); }, 8000); return () => clearTimeout(t); }, []);
+  useEffect(() => { const t = setTimeout(() => { if (loading) { setLoading(false); } }, 8000); return () => clearTimeout(t); }, []);
   const [copiedLink, setCopiedLink] = useState(false);
   const [sharedBoardId, setSharedBoardId] = useState("");
   const [sharePermission, setSharePermission] = useState<SharePermission>("view");
@@ -300,8 +300,17 @@ export default function App() {
       .on("postgres_changes", { event:"DELETE", schema:"public", table:"stickies", filter:`board_id=eq.${activeBoardId}` }, (payload) => {
         setIdeas(prev => prev.filter(i => i.id !== payload.old.id));
       })
+      .on("postgres_changes", { event:"*", schema:"public", table:"cursors", filter:`board_id=eq.${activeBoardId}` }, (payload) => {
+        if (payload.new && (payload.new as any).id !== `${user?.id}-${activeBoardId}`) {
+          const c = payload.new as any;
+          setCursors(prev => ({ ...prev, [c.id]: { x: c.x, y: c.y, email: c.user_email, color: c.color } }));
+        }
+        if (payload.eventType === "DELETE") {
+          setCursors(prev => { const n = {...prev}; delete n[(payload.old as any).id]; return n; });
+        }
+      })
       .subscribe();
-    return () => { supabase.removeChannel(ch); };
+    return () => { supabase.removeChannel(ch); setCursors({}); };
   }, [activeBoardId]);
 
   const onMouseDown = useCallback((e: React.MouseEvent, id: string) => {
@@ -309,10 +318,18 @@ export default function App() {
     setDragging(id); setDragOffset({x:e.clientX-idea.x,y:e.clientY-idea.y}); e.preventDefault();
   }, [ideas]);
 
+  const [cursors, setCursors] = useState<Record<string, {x:number;y:number;email:string;color:string}>>({});
+  const cursorThrottle = useRef<ReturnType<typeof setTimeout>|null>(null);
+
   const onMouseMove = useCallback((e: React.MouseEvent) => {
-    if (!dragging) return;
-    setIdeas(prev=>prev.map(s=>s.id===dragging?{...s,x:e.clientX-dragOffset.x,y:e.clientY-dragOffset.y}:s));
-  }, [dragging, dragOffset]);
+    if (dragging) setIdeas(prev=>prev.map(s=>s.id===dragging?{...s,x:e.clientX-dragOffset.x,y:e.clientY-dragOffset.y}:s));
+    if (activeBoardId && user && !cursorThrottle.current) {
+      cursorThrottle.current = setTimeout(() => { cursorThrottle.current = null; }, 50);
+      const cursorId = `${user.id}-${activeBoardId}`;
+      const userColor = BOARD_COLORS[user.id.charCodeAt(0) % BOARD_COLORS.length];
+      supabase.from("cursors").upsert({ id: cursorId, board_id: activeBoardId, user_email: user.email, x: e.clientX, y: e.clientY, color: userColor, updated_at: new Date().toISOString() });
+    }
+  }, [dragging, dragOffset, activeBoardId, user]);
 
   const onMouseUp = useCallback(async () => {
     if (dragging) { const idea = ideas.find(s=>s.id===dragging); if (idea) await supabase.from("stickies").update({x:idea.x,y:idea.y}).eq("id",idea.id); }
@@ -505,6 +522,13 @@ export default function App() {
               <button onClick={()=>atBoardLimit?setShowUpgradeModal(true):setShowTemplates(true)} style={{ padding:"10px 24px", background:"#1D9E75", color:"#fff", border:"none", borderRadius:8, fontSize:13, cursor:"pointer" }}>+ Create Board</button>
             </div>
           )}
+
+          {activeBoardId && Object.entries(cursors).map(([id, c]) => (
+            <div key={id} style={{ position:"absolute", left:c.x, top:c.y, pointerEvents:"none", zIndex:1000, transform:"translate(-2px,-2px)" }}>
+              <svg width="16" height="16" viewBox="0 0 16 16" fill={c.color}><path d="M0 0 L0 12 L3.5 9 L6 14 L8 13 L5.5 8 L9.5 8 Z"/></svg>
+              <div style={{ background:c.color, color:"#fff", fontSize:10, padding:"2px 6px", borderRadius:10, marginTop:2, whiteSpace:"nowrap", fontFamily:"sans-serif" }}>{c.email?.split("@")[0]}</div>
+            </div>
+          ))}
 
           {activeBoardId && ideas.map(s => {
             const iconDef = IDEA_ICONS.find(i=>i.id===s.icon)||IDEA_ICONS[0];
