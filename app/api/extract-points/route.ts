@@ -8,10 +8,10 @@ export async function POST(req: Request) {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${process.env.GROQ_API_KEY}`,
+        "Authorization": `Bearer ${process.env.GROQ_API_KEY?.trim()}`,
       },
       body: JSON.stringify({
-        model: "groq/compound",
+        model: "llama-3.3-70b-versatile",
         max_tokens: 500,
         messages: [{
           role: "user",
@@ -21,6 +21,7 @@ export async function POST(req: Request) {
     });
 
     const data = await res.json();
+    if (data.error) return NextResponse.json({ error: data.error.message }, { status: 502 });
     const content = data.choices?.[0]?.message?.content || "[]";
     const points = JSON.parse(content.match(/\[[\s\S]*\]/)?.[0] || "[]");
     return NextResponse.json({ points });

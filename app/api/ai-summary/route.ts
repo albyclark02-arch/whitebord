@@ -16,7 +16,7 @@ export async function POST(req: Request) {
         "Authorization": `Bearer ${key.trim()}`,
       },
       body: JSON.stringify({
-        model: "groq/compound",
+        model: "llama-3.3-70b-versatile",
         max_tokens: 1000,
         messages: [{ role: "user", content: prompt }],
       }),
