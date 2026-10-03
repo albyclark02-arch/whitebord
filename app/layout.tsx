@@ -3,7 +3,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Workboard",
-  description: "Workboard — visual meeting notes that actually make sense.",
+  description: "Workboard — record your group project meeting and get a shared board of who's doing what.",
   icons: {
     icon: "/favicon.svg",
     apple: "/apple-touch-icon.png",

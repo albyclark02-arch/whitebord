@@ -32,12 +32,36 @@ const IDEA_ICONS: { id: IdeaType; label: string; svg: React.ReactNode }[] = [
 
 const IDEA_COLORS: IdeaColor[] = ["#EF9F27", "#1D9E75", "#7F77DD", "#D85A30", "#378ADD", "#E05C94", "#2BBCD4", "#8BC34A"];
 
-const TEMPLATES = [
-  { id: "meeting", name: "Team Meeting", icon: "👥", color: "#1D9E75", description: "Agenda, action items, decisions" },
-  { id: "brainstorm", name: "Brainstorm", icon: "💡", color: "#7F77DD", description: "Ideas, themes, mind mapping" },
-  { id: "sprint", name: "Sprint Planning", icon: "🚀", color: "#EF9F27", description: "Stories, tasks, blockers" },
-  { id: "retro", name: "Retrospective", icon: "🔁", color: "#378ADD", description: "What went well, improvements" },
-  { id: "blank", name: "Blank Canvas", icon: "✨", color: "#D85A30", description: "Start from scratch" },
+const TEMPLATES: { id: string; name: string; icon: string; color: string; description: string; starters: { text: string; icon: IdeaType; color: IdeaColor }[] }[] = [
+  { id: "kickoff", name: "Group Project Kickoff", icon: "🚀", color: "#1D9E75", description: "Split the work, set deadlines, agree on roles", starters: [
+    { text: "What is the task asking us to do? (paste the brief here)", icon: "pin", color: "#378ADD" },
+    { text: "Due date: ", icon: "flag", color: "#D85A30" },
+    { text: "Who is doing what? Add a task for each person", icon: "task", color: "#1D9E75" },
+    { text: "When do we meet next?", icon: "question", color: "#378ADD" },
+  ] },
+  { id: "research", name: "Research Board", icon: "🔎", color: "#7F77DD", description: "Collect sources, facts and quotes together", starters: [
+    { text: "Research question: ", icon: "question", color: "#378ADD" },
+    { text: "Source 1 (title + link)", icon: "pin", color: "#7F77DD" },
+    { text: "Key fact or quote we want to use", icon: "star", color: "#EF9F27" },
+  ] },
+  { id: "assignment", name: "Assignment Planner", icon: "📅", color: "#EF9F27", description: "Break a big assignment into steps and deadlines", starters: [
+    { text: "Step 1: Read the marking criteria", icon: "task", color: "#1D9E75" },
+    { text: "Step 2: Plan and research", icon: "task", color: "#1D9E75" },
+    { text: "Step 3: Draft", icon: "task", color: "#1D9E75" },
+    { text: "Step 4: Check and submit", icon: "task", color: "#1D9E75" },
+    { text: "Final due date: ", icon: "flag", color: "#D85A30" },
+  ] },
+  { id: "presentation", name: "Presentation Prep", icon: "🎤", color: "#378ADD", description: "Plan slides, who presents what, and practice", starters: [
+    { text: "Slide outline: intro, main points, conclusion", icon: "pin", color: "#378ADD" },
+    { text: "Who presents which section?", icon: "question", color: "#378ADD" },
+    { text: "Practice run before the due date", icon: "task", color: "#1D9E75" },
+  ] },
+  { id: "study", name: "Study Group", icon: "📚", color: "#E05C94", description: "Revise for a test together", starters: [
+    { text: "Topics on the test", icon: "star", color: "#EF9F27" },
+    { text: "Things we don't understand yet", icon: "question", color: "#378ADD" },
+    { text: "Practice questions to try", icon: "task", color: "#1D9E75" },
+  ] },
+  { id: "blank", name: "Blank Board", icon: "✨", color: "#D85A30", description: "Start from scratch", starters: [] },
 ];
 
 const BOARD_COLORS = ["#1D9E75","#7F77DD","#EF9F27","#D85A30","#378ADD","#E05C94","#2BBCD4","#8BC34A"];
@@ -54,16 +78,29 @@ function LandingPage({ onEnter, onLogin, theme }: { onEnter: () => void; onLogin
         <button onClick={onEnter} style={{ padding: "8px 20px", background: "#1D9E75", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>Sign up free</button>
       </nav>
       <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "80px 40px", textAlign: "center" }}>
-        <div style={{ display: "inline-block", padding: "4px 14px", borderRadius: 20, background: "#E1F5EE", color: "#0F6E56", fontSize: 12, fontWeight: 500, marginBottom: 24, fontFamily: "sans-serif" }}>✦ Now in beta</div>
+        <div style={{ display: "inline-block", padding: "4px 14px", borderRadius: 20, background: "#E1F5EE", color: "#0F6E56", fontSize: 12, fontWeight: 500, marginBottom: 24, fontFamily: "sans-serif" }}>✦ Built for school group projects</div>
         <h1 style={{ fontSize: "clamp(36px, 6vw, 72px)", fontWeight: 700, lineHeight: 1.1, marginBottom: 24, letterSpacing: -2 }}>
-          Meeting notes that<br /><span style={{ color: "#1D9E75" }}>actually make sense.</span>
+          Group projects where<br /><span style={{ color: "#1D9E75" }}>everyone knows the plan.</span>
         </h1>
         <p style={{ fontSize: 17, color: dark?"#888":"#666", maxWidth: 480, lineHeight: 1.7, marginBottom: 40, fontFamily: "sans-serif", fontWeight: 300 }}>
-          Workboard is a visual, collaborative workspace for meetings, brainstorming, and planning.
+          Hit record in your group meeting and Workboard fills a shared board with who's doing what, what you decided and what's still unclear. No more "wait, what was I meant to do?"
         </p>
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center", marginBottom: 48 }}>
           <button onClick={onEnter} style={{ padding: "13px 30px", background: "#1D9E75", color: "#fff", border: "none", borderRadius: 10, fontSize: 15, cursor: "pointer", fontFamily: "sans-serif", fontWeight: 500 }}>Get started free</button>
           <button onClick={onLogin} style={{ padding: "13px 30px", background: "transparent", border: `1px solid ${dark?"#333":"#e0e0e0"}`, borderRadius: 10, fontSize: 15, cursor: "pointer", color: dark?"#aaa":"#555", fontFamily: "sans-serif" }}>Log in</button>
+        </div>
+        <div style={{ display: "flex", gap: 16, flexWrap: "wrap", justifyContent: "center", maxWidth: 840, marginBottom: 48, fontFamily: "sans-serif", textAlign: "left" }}>
+          {[
+            { icon: "🎙️", title: "Record your meeting", body: "Tasks, decisions and questions appear on the board while you talk." },
+            { icon: "✅", title: "Every task has a name", body: "Everyone can see who's doing what and when it's due." },
+            { icon: "🔗", title: "Share with your group", body: "One link for the whole group. Edit together live, or share view-only with your teacher." },
+          ].map(f => (
+            <div key={f.title} style={{ flex: "1 1 220px", background: dark?"#1a1a1a":"#f8f8f8", border: `1px solid ${dark?"#222":"#e8e8e8"}`, borderRadius: 12, padding: "18px 20px" }}>
+              <div style={{ fontSize: 22, marginBottom: 8 }}>{f.icon}</div>
+              <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>{f.title}</div>
+              <div style={{ fontSize: 13, color: dark?"#888":"#666", lineHeight: 1.5 }}>{f.body}</div>
+            </div>
+          ))}
         </div>
         <div style={{ display: "flex", gap: 16, flexWrap: "wrap", justifyContent: "center" }}>
           <div style={{ background: dark?"#1a1a1a":"#f8f8f8", border: `1px solid ${dark?"#222":"#e8e8e8"}`, borderRadius: 12, padding: "16px 24px", fontFamily: "sans-serif" }}>
@@ -77,7 +114,7 @@ function LandingPage({ onEnter, onLogin, theme }: { onEnter: () => void; onLogin
         </div>
       </div>
       <footer style={{ padding: "20px 40px", borderTop: `1px solid ${dark?"#1a1a1a":"#f0f0f0"}`, display: "flex", justifyContent: "space-between", fontSize: 12, color: dark?"#555":"#aaa", fontFamily: "sans-serif" }}>
-        <span>© 2025 Workboard</span><span>Privacy · Terms</span>
+        <span>© {new Date().getFullYear()} Workboard</span><span>Privacy · Terms</span>
       </footer>
     </div>
   );
@@ -360,7 +397,14 @@ export default function App() {
     const name = newBoardName.trim()||template?.name||"New Board";
     const color = template?.color||newBoardColor;
     const { data } = await supabase.from("boards").insert({ name, color, user_id:user.id, shared:false, share_permission:"view" }).select().single();
-    if (data) { setBoards(prev=>[data,...prev]); setActiveBoardId(data.id); setIdeas([]); }
+    if (data) {
+      setBoards(prev=>[data,...prev]); setActiveBoardId(data.id); setIdeas([]);
+      if (template?.starters.length) {
+        const rows = template.starters.map((st, n) => ({ board_id:data.id, text:st.text, color:st.color, icon:st.icon, x:60+(n%4)*200, y:80+Math.floor(n/4)*180 }));
+        const { data: stickies } = await supabase.from("stickies").insert(rows).select();
+        if (stickies) setIdeas(prev => [...prev, ...stickies.filter((st: Idea) => !prev.some(p=>p.id===st.id))]);
+      }
+    }
     setNewBoardName(""); setShowTemplates(false);
   };
 
