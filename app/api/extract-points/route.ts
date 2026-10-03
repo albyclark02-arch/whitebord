@@ -22,7 +22,7 @@ export async function POST(req: Request) {
 
     const data = await res.json();
     const content = data.choices?.[0]?.message?.content || "[]";
-    const points = JSON.parse(content.match(/\[.*\]/s)?.[0] || "[]");
+    const points = JSON.parse(content.match(/\[[\s\S]*\]/)?.[0] || "[]");
     return NextResponse.json({ points });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
