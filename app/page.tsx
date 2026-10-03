@@ -240,6 +240,11 @@ export default function App() {
   const [sharePermission, setSharePermission] = useState<SharePermission>("view");
   const [aiSummary, setAiSummary] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
+  const [showKeyPointsModal, setShowKeyPointsModal] = useState(false);
+  const [keyPointsText, setKeyPointsText] = useState("");
+  const [keyPoints, setKeyPoints] = useState<string[]>([]);
+  const [keyPointsLoading, setKeyPointsLoading] = useState(false);
+  const [keyPointsError, setKeyPointsError] = useState("");
   const [exportLoading, setExportLoading] = useState(false);
 
   const dark = theme === "dark";
@@ -408,6 +413,35 @@ export default function App() {
     setAiLoading(false);
   };
 
+  const handleExtractKeyPoints = async () => {
+    if (!keyPointsText.trim()) return;
+    setKeyPointsLoading(true); setKeyPoints([]); setKeyPointsError("");
+    try {
+      const res = await fetch("/api/extract-points", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ transcript: keyPointsText }),
+      });
+      const data = await res.json();
+      if (data.error) setKeyPointsError(data.error);
+      else if (!data.points?.length) setKeyPointsError("No key points found. Try pasting more of the meeting.");
+      else setKeyPoints(data.points);
+    } catch { setKeyPointsError("Error getting key points. Please try again."); }
+    setKeyPointsLoading(false);
+  };
+
+  const handleAddKeyPointsToBoard = async () => {
+    if (!activeBoardId || keyPoints.length === 0) return;
+    const rows = keyPoints.map((text, i) => {
+      const n = ideas.length + i;
+      return { board_id:activeBoardId, text, color:"#EF9F27", icon:"star", x:60+(n%4)*200, y:80+Math.floor(n/4)*180 };
+    });
+    const { data, error } = await supabase.from("stickies").insert(rows).select();
+    if (error) { setKeyPointsError("Couldn't add to board: " + error.message); return; }
+    if (data) setIdeas(prev=>[...prev,...data]);
+    setShowKeyPointsModal(false); setKeyPoints([]); setKeyPointsText("");
+  };
+
   const handleExportMarkdown = () => {
     if (!activeBoard) return;
     const lines = [`# ${activeBoard.name}`, "", `*Exported ${new Date().toLocaleDateString()}*`, ""];
@@ -453,6 +487,7 @@ export default function App() {
         {activeBoardId && <button onClick={()=>setShowShareModal(true)} style={{ padding:"5px 8px", border:`1px solid ${border}`, borderRadius:8, fontSize:11, color:text2, cursor:"pointer", background:"transparent" }}>🔗 Share</button>}
         {activeBoardId && <button onClick={()=>setShowExportModal(true)} style={{ padding:"5px 8px", border:`1px solid ${border}`, borderRadius:8, fontSize:11, color:text2, cursor:"pointer", background:"transparent" }}>Export</button>}
         {activeBoardId && <button onClick={()=>{ if (!isPro) { setShowUpgradeModal(true); return; } setShowAiModal(true); handleAiSummary(); }} style={{ padding:"5px 8px", border:`1px solid ${isPro?"#7F77DD":border}`, borderRadius:8, fontSize:11, color:isPro?"#7F77DD":text3, cursor:"pointer", background:"transparent" }} title={isPro?"Generate AI meeting summary":"Pro feature — upgrade to use AI Summary"}>✦ AI Summary{!isPro&&" 🔒"}</button>}
+        {activeBoardId && <button onClick={()=>{ if (!isPro) { setShowUpgradeModal(true); return; } setKeyPoints([]); setKeyPointsError(""); setShowKeyPointsModal(true); }} style={{ padding:"5px 8px", border:`1px solid ${isPro?"#EF9F27":border}`, borderRadius:8, fontSize:11, color:isPro?"#EF9F27":text3, cursor:"pointer", background:"transparent" }} title={isPro?"Pull key points out of meeting notes":"Pro feature — upgrade to use Key Points"}>★ Key Points{!isPro&&" 🔒"}</button>}
         {activeBoardId && <button onClick={()=>setShowDeleteBoardConfirm(true)} style={{ padding:"5px 8px", border:`1px solid #E05C5C`, borderRadius:8, fontSize:11, color:"#E05C5C", cursor:"pointer", background:"transparent" }}>Delete</button>}
         <button onClick={()=>setShowSettings(true)} style={{ padding:"5px 8px", border:`1px solid ${border}`, borderRadius:8, fontSize:11, color:text2, cursor:"pointer", background:"transparent" }}>⚙</button>
         <button onClick={()=>atBoardLimit?setShowUpgradeModal(true):setShowTemplates(true)} style={{ padding:"5px 10px", background:"#1D9E75", color:"#fff", border:"none", borderRadius:8, fontSize:11, cursor:"pointer" }}>+ Board</button>
@@ -611,6 +646,32 @@ export default function App() {
             {aiSummary && <p style={{ fontSize:13, color:text, lineHeight:1.7, whiteSpace:"pre-wrap" }}>{aiSummary}</p>}
             {aiSummary && (
               <button onClick={()=>{navigator.clipboard.writeText(aiSummary);}} style={{ marginTop:16, padding:"8px 16px", border:`1px solid ${border}`, borderRadius:8, background:"transparent", cursor:"pointer", color:text2, fontSize:12 }}>Copy summary</button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Key Points modal */}
+      {showKeyPointsModal && (
+        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.4)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:300 }}>
+          <div style={{ background:bg, borderRadius:16, padding:28, width:"min(640px, 90vw)", maxHeight:"80vh", overflow:"auto", border:`1px solid ${border}` }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
+              <h2 style={{ fontSize:16, fontWeight:600, color:text }}>★ Key Points</h2>
+              <button onClick={()=>setShowKeyPointsModal(false)} style={{ background:"none", border:"none", cursor:"pointer", color:text2, fontSize:18 }}>×</button>
+            </div>
+            <textarea value={keyPointsText} onChange={e=>setKeyPointsText(e.target.value)} placeholder="Paste your meeting notes or transcript here..." rows={8} style={{ width:"100%", padding:12, border:`1px solid ${border}`, borderRadius:8, background:"transparent", color:text, fontSize:13, fontFamily:"inherit", resize:"vertical", boxSizing:"border-box" }}/>
+            <button onClick={handleExtractKeyPoints} disabled={keyPointsLoading||!keyPointsText.trim()} style={{ marginTop:12, padding:"8px 16px", background:"#EF9F27", color:"#fff", border:"none", borderRadius:8, cursor:keyPointsLoading||!keyPointsText.trim()?"default":"pointer", opacity:keyPointsLoading||!keyPointsText.trim()?0.6:1, fontSize:12 }}>{keyPointsLoading?"Finding key points...":"Get key points"}</button>
+            {keyPointsError && <p style={{ marginTop:16, fontSize:13, color:"#E05C5C" }}>{keyPointsError}</p>}
+            {keyPoints.length > 0 && (
+              <>
+                <ul style={{ marginTop:20, paddingLeft:20, fontSize:13, color:text, lineHeight:1.7 }}>
+                  {keyPoints.map((p,i)=><li key={i}>{p}</li>)}
+                </ul>
+                <div style={{ display:"flex", gap:8, marginTop:16 }}>
+                  <button onClick={handleAddKeyPointsToBoard} style={{ padding:"8px 16px", background:"#1D9E75", color:"#fff", border:"none", borderRadius:8, cursor:"pointer", fontSize:12 }}>Add to board</button>
+                  <button onClick={()=>{navigator.clipboard.writeText(keyPoints.map(p=>`• ${p}`).join("\n"));}} style={{ padding:"8px 16px", border:`1px solid ${border}`, borderRadius:8, background:"transparent", cursor:"pointer", color:text2, fontSize:12 }}>Copy</button>
+                </div>
+              </>
             )}
           </div>
         </div>
