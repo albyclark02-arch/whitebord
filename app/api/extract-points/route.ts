@@ -11,7 +11,8 @@ export async function POST(req: Request) {
         "Authorization": `Bearer ${process.env.GROQ_API_KEY?.trim()}`,
       },
       body: JSON.stringify({
-        model: "llama-3.3-70b-versatile",
+        model: "openai/gpt-oss-120b",
+        reasoning_effort: "low",
         max_tokens: 500,
         messages: [{
           role: "user",

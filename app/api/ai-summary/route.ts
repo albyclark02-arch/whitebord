@@ -16,7 +16,8 @@ export async function POST(req: Request) {
         "Authorization": `Bearer ${key.trim()}`,
       },
       body: JSON.stringify({
-        model: "llama-3.3-70b-versatile",
+        model: "openai/gpt-oss-120b",
+        reasoning_effort: "low",
         max_tokens: 1000,
         messages: [{ role: "user", content: prompt }],
       }),
