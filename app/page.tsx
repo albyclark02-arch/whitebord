@@ -153,8 +153,9 @@ function SharedBoardView({ shareId, theme }: { shareId: string; theme: Theme }) 
   }, [dragging, dragOffset]);
 
   const onMouseUp = useCallback(async () => {
-    if (dragging) { const idea = ideas.find(s=>s.id===dragging); if (idea) await supabase.from("stickies").update({x:idea.x,y:idea.y}).eq("id",idea.id); }
+    if (!dragging) return;
     setDragging(null);
+    const idea = ideas.find(s=>s.id===dragging); if (idea) await supabase.from("stickies").update({x:idea.x,y:idea.y}).eq("id",idea.id);
   }, [dragging, ideas]);
 
   const handleAdd = async () => {
@@ -245,6 +246,17 @@ export default function App() {
   const [keyPoints, setKeyPoints] = useState<string[]>([]);
   const [keyPointsLoading, setKeyPointsLoading] = useState(false);
   const [keyPointsError, setKeyPointsError] = useState("");
+  const [recording, setRecording] = useState(false);
+  const [recSeconds, setRecSeconds] = useState(0);
+  const [recStatus, setRecStatus] = useState("");
+  const recordingRef = useRef(false);
+  const recStreamRef = useRef<MediaStream|null>(null);
+  const recorderRef = useRef<MediaRecorder|null>(null);
+  const recBoardRef = useRef("");
+  const ideasRef = useRef<Idea[]>([]);
+  ideasRef.current = ideas;
+  const activeBoardIdRef = useRef("");
+  activeBoardIdRef.current = activeBoardId;
   const [exportLoading, setExportLoading] = useState(false);
 
   const dark = theme === "dark";
@@ -337,8 +349,9 @@ export default function App() {
   }, [dragging, dragOffset, activeBoardId, user]);
 
   const onMouseUp = useCallback(async () => {
-    if (dragging) { const idea = ideas.find(s=>s.id===dragging); if (idea) await supabase.from("stickies").update({x:idea.x,y:idea.y}).eq("id",idea.id); }
+    if (!dragging) return;
     setDragging(null);
+    const idea = ideas.find(s=>s.id===dragging); if (idea) await supabase.from("stickies").update({x:idea.x,y:idea.y}).eq("id",idea.id);
   }, [dragging, ideas]);
 
   const handleAddBoard = async (templateId?: string) => {
@@ -442,6 +455,93 @@ export default function App() {
     setShowKeyPointsModal(false); setKeyPoints([]); setKeyPointsText("");
   };
 
+  // ── Live meeting recording: every 30s, transcribe the latest audio and turn it into stickies ──
+  const REC_CHUNK_MS = 30000;
+  const REC_STICKY_STYLE: Record<string, { icon: IdeaType; color: IdeaColor }> = {
+    task: { icon:"task", color:"#1D9E75" },
+    decision: { icon:"star", color:"#EF9F27" },
+    blocker: { icon:"alert", color:"#D85A30" },
+    question: { icon:"question", color:"#378ADD" },
+    idea: { icon:"lightbulb", color:"#7F77DD" },
+  };
+
+  const processRecordingChunk = async (blob: Blob, boardId: string) => {
+    if (blob.size < 2000) return;
+    setRecStatus("Listening...");
+    try {
+      const form = new FormData();
+      form.append("audio", blob);
+      const tRes = await fetch("/api/transcribe", { method:"POST", body:form });
+      const tData = await tRes.json();
+      if (tData.error) { setRecStatus("Transcription error"); return; }
+      const transcript = (tData.transcript || "").trim();
+      if (transcript.length < 15) return;
+
+      setRecStatus("Adding notes...");
+      const onBoard = ideasRef.current.filter(i=>i.board_id===boardId);
+      const sRes = await fetch("/api/meeting-stickies", {
+        method:"POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ transcript, existing: onBoard.map(i=>i.text) }),
+      });
+      const sData = await sRes.json();
+      if (sData.error) { setRecStatus("AI error"); return; }
+      const stickies: { type: string; text: string }[] = sData.stickies || [];
+      if (stickies.length === 0) { setRecStatus(recordingRef.current ? "Listening..." : ""); return; }
+
+      const rows = stickies.map((s, i) => {
+        const n = onBoard.length + i;
+        const style = REC_STICKY_STYLE[s.type] || REC_STICKY_STYLE.idea;
+        return { board_id:boardId, text:s.text, color:style.color, icon:style.icon, x:60+(n%4)*200, y:80+Math.floor(n/4)*180 };
+      });
+      const { data, error } = await supabase.from("stickies").insert(rows).select();
+      if (error) { setRecStatus("Couldn't save notes"); return; }
+      if (data) setIdeas(prev => [...prev, ...data.filter((d: Idea) => d.board_id===activeBoardIdRef.current && !prev.some(p=>p.id===d.id))]);
+      setRecStatus(`Added ${rows.length} note${rows.length!==1?"s":""}`);
+    } catch { setRecStatus("Connection error"); }
+  };
+
+  const startRecordingChunk = () => {
+    const stream = recStreamRef.current; if (!stream) return;
+    const boardId = recBoardRef.current;
+    const rec = new MediaRecorder(stream);
+    const parts: Blob[] = [];
+    rec.ondataavailable = e => { if (e.data.size > 0) parts.push(e.data); };
+    rec.onstop = () => {
+      processRecordingChunk(new Blob(parts, { type: rec.mimeType }), boardId);
+      if (recordingRef.current) startRecordingChunk();
+      else { stream.getTracks().forEach(t=>t.stop()); recStreamRef.current = null; }
+    };
+    recorderRef.current = rec;
+    rec.start();
+    setTimeout(() => { if (rec.state === "recording") rec.stop(); }, REC_CHUNK_MS);
+  };
+
+  const handleStartRecording = async () => {
+    if (!activeBoardId || recording) return;
+    try {
+      recStreamRef.current = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch { alert("Workboard needs microphone access to record. Allow it in your browser and try again."); return; }
+    recordingRef.current = true; recBoardRef.current = activeBoardId;
+    setRecording(true); setRecSeconds(0); setRecStatus("Listening...");
+    startRecordingChunk();
+  };
+
+  const handleStopRecording = () => {
+    recordingRef.current = false;
+    setRecording(false);
+    if (recorderRef.current?.state === "recording") recorderRef.current.stop();
+  };
+
+  useEffect(() => {
+    if (!recording) return;
+    const t = setInterval(() => setRecSeconds(s=>s+1), 1000);
+    return () => clearInterval(t);
+  }, [recording]);
+
+  useEffect(() => { if (recordingRef.current && recBoardRef.current !== activeBoardId) handleStopRecording(); }, [activeBoardId]);
+  useEffect(() => () => { recordingRef.current = false; recorderRef.current?.state === "recording" && recorderRef.current.stop(); }, []);
+
   const handleExportMarkdown = () => {
     if (!activeBoard) return;
     const lines = [`# ${activeBoard.name}`, "", `*Exported ${new Date().toLocaleDateString()}*`, ""];
@@ -488,6 +588,10 @@ export default function App() {
         {activeBoardId && <button onClick={()=>setShowExportModal(true)} style={{ padding:"5px 8px", border:`1px solid ${border}`, borderRadius:8, fontSize:11, color:text2, cursor:"pointer", background:"transparent" }}>Export</button>}
         {activeBoardId && <button onClick={()=>{ if (!isPro) { setShowUpgradeModal(true); return; } setShowAiModal(true); handleAiSummary(); }} style={{ padding:"5px 8px", border:`1px solid ${isPro?"#7F77DD":border}`, borderRadius:8, fontSize:11, color:isPro?"#7F77DD":text3, cursor:"pointer", background:"transparent" }} title={isPro?"Generate AI meeting summary":"Pro feature — upgrade to use AI Summary"}>✦ AI Summary{!isPro&&" 🔒"}</button>}
         {activeBoardId && <button onClick={()=>{ if (!isPro) { setShowUpgradeModal(true); return; } setKeyPoints([]); setKeyPointsError(""); setShowKeyPointsModal(true); }} style={{ padding:"5px 8px", border:`1px solid ${isPro?"#EF9F27":border}`, borderRadius:8, fontSize:11, color:isPro?"#EF9F27":text3, cursor:"pointer", background:"transparent" }} title={isPro?"Pull key points out of meeting notes":"Pro feature — upgrade to use Key Points"}>★ Key Points{!isPro&&" 🔒"}</button>}
+        {activeBoardId && (recording
+          ? <button onClick={handleStopRecording} style={{ padding:"5px 8px", border:"1px solid #E05C5C", borderRadius:8, fontSize:11, color:"#fff", cursor:"pointer", background:"#E05C5C" }} title="Stop recording">■ Stop {Math.floor(recSeconds/60)}:{String(recSeconds%60).padStart(2,"0")}</button>
+          : <button onClick={()=>{ if (!isPro) { setShowUpgradeModal(true); return; } handleStartRecording(); }} style={{ padding:"5px 8px", border:`1px solid ${isPro?"#E05C5C":border}`, borderRadius:8, fontSize:11, color:isPro?"#E05C5C":text3, cursor:"pointer", background:"transparent" }} title={isPro?"Record your meeting — notes appear on the board as you talk":"Pro feature — upgrade to use Record"}>● Record{!isPro&&" 🔒"}</button>
+        )}
         {activeBoardId && <button onClick={()=>setShowDeleteBoardConfirm(true)} style={{ padding:"5px 8px", border:`1px solid #E05C5C`, borderRadius:8, fontSize:11, color:"#E05C5C", cursor:"pointer", background:"transparent" }}>Delete</button>}
         <button onClick={()=>setShowSettings(true)} style={{ padding:"5px 8px", border:`1px solid ${border}`, borderRadius:8, fontSize:11, color:text2, cursor:"pointer", background:"transparent" }}>⚙</button>
         <button onClick={()=>atBoardLimit?setShowUpgradeModal(true):setShowTemplates(true)} style={{ padding:"5px 10px", background:"#1D9E75", color:"#fff", border:"none", borderRadius:8, fontSize:11, cursor:"pointer" }}>+ Board</button>
@@ -546,6 +650,8 @@ export default function App() {
               <div style={{ width:10, height:10, borderRadius:"50%", background:activeBoard.color, flexShrink:0 }}/>
               <span style={{ fontSize:14, fontWeight:600, color:text }}>{activeBoard.name}</span>
               <span style={{ fontSize:11, color:text3 }}>· {ideas.length} idea{ideas.length!==1?"s":""}</span>
+              {recording && <span style={{ fontSize:11, color:"#E05C5C", marginLeft:"auto" }}>● Recording · {recStatus || "Listening..."} · new notes every 30s</span>}
+              {!recording && recStatus && <span style={{ fontSize:11, color:text3, marginLeft:"auto" }}>{recStatus}</span>}
             </div>
           )}
 
